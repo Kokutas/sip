@@ -3,9 +3,9 @@ package header
 import (
 	"errors"
 	"fmt"
+	"github.com/kokutas/sip"
+	"github.com/kokutas/sip/util"
 	"regexp"
-	"sip"
-	"sip/util"
 	"strings"
 )
 

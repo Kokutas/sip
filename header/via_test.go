@@ -2,10 +2,10 @@ package header
 
 import (
 	"fmt"
+	"github.com/kokutas/sip"
+	"github.com/kokutas/sip/util"
 	"log"
 	"net"
-	"sip"
-	"sip/util"
 	"testing"
 )
 

@@ -3,7 +3,7 @@ package line
 import (
 	"fmt"
 	"log"
-	"sip"
+	"github.com/kokutas/sip"
 	"testing"
 )
 

@@ -3,8 +3,9 @@ package header
 import (
 	"fmt"
 	"log"
-	"sip"
 	"testing"
+
+	"github.com/kokutas/sip"
 )
 
 func TestAuthorization_Algorithm(t *testing.T) {

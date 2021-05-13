@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"sip"
+	"github.com/kokutas/sip"
 	"strconv"
 	"strings"
 )

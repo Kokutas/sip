@@ -2,8 +2,8 @@ package header
 
 import (
 	"fmt"
+	"github.com/kokutas/sip"
 	"log"
-	"sip"
 	"testing"
 )
 
