@@ -1,7 +1,6 @@
 package sip
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -13,77 +12,102 @@ import (
 // user-unreserved  =  "&" / "=" / "+" / "$" / "," / ";" / "?" / "/"
 // password         =  *( unreserved / escaped /
 //                     "&" / "=" / "+" / "$" / "," )
+
 type UserInfo struct {
-	User                string `json:"user"`
-	TelephoneSubscriber string `json:"telephone-subscriber"`
-	Password            string `json:"password,omitempty"`
+	user                string
+	telephoneSubscriber string
+	password            string
 }
 
-func CreateUserInfo() *UserInfo {
-	return &UserInfo{}
+func (ui *UserInfo) User() string {
+	return ui.user
 }
-func NewUserInfo(user, telephoneSubscriber, password string) Sip {
-	return &UserInfo{
-		User:                user,
-		TelephoneSubscriber: telephoneSubscriber,
-		Password:            password,
-	}
+
+func (ui *UserInfo) SetUser(user string) {
+	ui.user = user
 }
-func (ui *UserInfo) Raw() string {
+
+func (ui *UserInfo) TelephoneSubscriber() string {
+	return ui.telephoneSubscriber
+}
+
+func (ui *UserInfo) SetTelephoneSubscriber(telephoneSubscriber string) {
+	ui.telephoneSubscriber = telephoneSubscriber
+}
+
+func (ui *UserInfo) Password() string {
+	return ui.password
+}
+
+func (ui *UserInfo) SetPassword(password string) {
+	ui.password = password
+}
+
+func NewUserInfo(user string, telephoneSubscriber string, password string) *UserInfo {
+	return &UserInfo{user: user, telephoneSubscriber: telephoneSubscriber, password: password}
+}
+
+func (ui *UserInfo) Raw() (string, error) {
 	result := ""
-	if ui == nil {
-		return result
+	if err := ui.Validator(); err != nil {
+		return result, err
 	}
 	switch {
-	case len(strings.TrimSpace(ui.User)) > 0:
-		result += ui.User
-	case len(strings.TrimSpace(ui.TelephoneSubscriber)) > 0:
-		result += ui.TelephoneSubscriber
+	case len(strings.TrimSpace(ui.user)) > 0:
+		result += ui.user
+	case len(strings.TrimSpace(ui.telephoneSubscriber)) > 0:
+		result += ui.telephoneSubscriber
 	}
-	if len(strings.TrimSpace(ui.Password)) > 0 {
-		result += fmt.Sprintf(":%v", ui.Password)
+	if len(strings.TrimSpace(ui.password)) > 0 {
+		result += fmt.Sprintf(":%s", ui.password)
 	}
-	return result
+	return result, nil
 }
-func (ui *UserInfo) JsonString() string {
-	result := ""
-	if ui == nil {
-		return result
+func (ui *UserInfo) String() string {
+	result:=""
+	if len(strings.TrimSpace(ui.user))>0{
+		result +=fmt.Sprintf("user: %s,",ui.user)
 	}
-	data, err := json.Marshal(ui)
-	if err != nil {
-		return result
+	if len(strings.TrimSpace(ui.telephoneSubscriber))>0{
+		result +=fmt.Sprintf("telephone-subscriber: %s,",ui.telephoneSubscriber)
 	}
-	result = fmt.Sprintf("%s", data)
+	if len(strings.TrimSpace(ui.password))>0{
+		result +=fmt.Sprintf("password: %s,",ui.password)
+	}
+	result = strings.TrimSuffix(result,",")
 	return result
 }
 func (ui *UserInfo) Parser(raw string) error {
-	raw = strings.TrimPrefix(raw, " ")
-	raw = strings.TrimSuffix(raw, " ")
 	if ui == nil {
-		return errors.New("UserInfo caller is not allowed to be nil")
+		return errors.New("userInfo caller is not allowed to be nil")
 	}
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = strings.TrimLeft(raw, " ")
+	raw = strings.TrimRight(raw," ")
+	raw = strings.TrimPrefix(raw," ")
+	raw = strings.TrimSuffix(raw," ")
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
-	if regexp.MustCompile(`\:\w+$`).MatchString(raw) {
-		passwordRaw := regexp.MustCompile(`\:\w+$`).FindString(raw)
+	if regexp.MustCompile(`:\w+$`).MatchString(raw) {
+		passwordRaw := regexp.MustCompile(`:\w+$`).FindString(raw)
 		password := strings.TrimPrefix(passwordRaw, ":")
-		ui.Password = password
+		ui.password = password
 		raw = strings.Replace(raw, passwordRaw, "", 1)
 	}
-	if regexp.MustCompile(`\d+\-\d+.*`).MatchString(raw) {
-		ui.TelephoneSubscriber = raw
+	if regexp.MustCompile(`\d+-\d+.*`).MatchString(raw) {
+		ui.telephoneSubscriber = raw
 	} else {
-		ui.User = raw
+		ui.user = raw
 	}
 	return nil
 }
 func (ui *UserInfo) Validator() error {
 	if ui == nil {
-		return errors.New("UserInfo caller is not allowed to be nil")
+		return errors.New("userInfo caller is not allowed to be nil")
 	}
-	if len(strings.TrimSpace(ui.User)) == 0 && len(strings.TrimSpace(ui.TelephoneSubscriber)) == 0 {
+	if len(strings.TrimSpace(ui.user)) == 0 && len(strings.TrimSpace(ui.telephoneSubscriber)) == 0 {
 		return errors.New("user or telephone-subscriber must has one")
 	}
 	return nil

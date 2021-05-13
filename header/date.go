@@ -1,12 +1,9 @@
 package header
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"regexp"
-	"sip"
 	"sip/util"
 	"strings"
 	"time"
@@ -37,94 +34,121 @@ import (
 // month = "Jan" / "Feb" / "Mar" / "Apr"
 //  		/ "May" / "Jun" / "Jul" / "Aug"
 //  		/ "Sep" / "Oct" / "Nov" / "Dec"
+
 type Date struct {
-	Field   string    `json:"field"`
-	SipDate time.Time `json:"sip-date"`
-	Format  string    `json:"format"`
+	field   string
+	sipDate time.Time
+	format  string
 }
 
-func CreateDate() sip.Sip {
-	return &Date{}
+func (date *Date) Field() string {
+	return date.field
 }
-func NewDate(sipDate time.Time, format string) sip.Sip {
+
+func (date *Date) SetField(field string) {
+	date.field = field
+}
+
+func (date *Date) SipDate() time.Time {
+	return date.sipDate
+}
+
+func (date *Date) SetSipDate(sipDate time.Time) {
+	date.sipDate = sipDate
+}
+
+func (date *Date) Format() string {
+	return date.format
+}
+
+func (date *Date) SetFormat(format string) {
+	date.format = format
+}
+
+func NewDate(sipDate time.Time, format string) *Date {
 	return &Date{
-		Field:   "Date",
-		SipDate: sipDate,
-		Format:  format,
+		field:   "Date",
+		sipDate: sipDate,
+		format:  format,
 	}
 }
-func (date *Date) Raw() string {
+func (date *Date) Raw() (string, error) {
 	result := ""
-	if reflect.DeepEqual(nil, date) {
-		return result
+	if err:=date.Validator();err!=nil{
+		return result,err
 	}
-	result += fmt.Sprintf("%v:", date.Field)
-	if len(strings.TrimSpace(date.SipDate.String())) > 0 {
-		if len(strings.TrimSpace(date.Format)) > 0 {
-			result += fmt.Sprintf(" %v", date.SipDate.Format(date.Format))
+	if len(strings.TrimSpace(date.field))==0{
+		date.field = "Date"
+	}
+	result += fmt.Sprintf("%s:", date.field)
+	if len(strings.TrimSpace(date.sipDate.String())) > 0 {
+		if len(strings.TrimSpace(date.format)) > 0 {
+			result += fmt.Sprintf(" %s", date.sipDate.Format(date.format))
 		} else {
-			result += fmt.Sprintf(" %v", date.SipDate.Format("2006-01-02T15:04:05.000"))
+			result += fmt.Sprintf(" %s", date.sipDate.Format("2006-01-02T15:04:05.000"))
 		}
 	} else {
-		if len(strings.TrimSpace(date.Format)) > 0 {
-			result += fmt.Sprintf(" %v", time.Now().Format(date.Format))
+		if len(strings.TrimSpace(date.format)) > 0 {
+			result += fmt.Sprintf(" %s", time.Now().Format(date.format))
 		} else {
-			result += fmt.Sprintf(" %v", time.Now().Format("2006-01-02T15:04:05.000"))
+			result += fmt.Sprintf(" %s", time.Now().Format("2006-01-02T15:04:05.000"))
 		}
 	}
 	result += "\r\n"
-	return result
+	return result,nil
 }
-func (date *Date) JsonString() string {
+func (date *Date) String() string {
 	result := ""
-	if reflect.DeepEqual(nil, date) {
-		return result
+	if len(strings.TrimSpace(date.field)) > 0 {
+		result += fmt.Sprintf("field: %s,", date.field)
 	}
-	data, err := json.Marshal(date)
-	if err != nil {
-		return result
+	if len(strings.TrimSpace(date.sipDate.String())) > 0 {
+		result += fmt.Sprintf("sip-date: %s,", date.sipDate.String())
 	}
-	result += fmt.Sprintf("%s", data)
+	if len(strings.TrimSpace(date.format)) > 0 {
+		result += fmt.Sprintf("format: %s,", date.format)
+	}
+	result = strings.TrimSuffix(result, ",")
 	return result
 }
 func (date *Date) Parser(raw string) error {
 	if date == nil {
 		return errors.New("date caller is not allowed to be nil")
 	}
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = util.TrimPrefixAndSuffix(raw, " ")
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
-	raw = util.TrimPrefixAndSuffix(raw, " ")
-	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
-	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
 	// filed regexp
 	fieldRegexp := regexp.MustCompile(`(?i)(date).*?:`)
 	if fieldRegexp.MatchString(raw) {
 		field := fieldRegexp.FindString(raw)
-		date.Field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
+		date.field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
 		raw = strings.ReplaceAll(raw, field, "")
 		raw = strings.TrimSuffix(raw, " ")
 		raw = strings.TrimPrefix(raw, " ")
 	}
 	raw = util.TrimPrefixAndSuffix(raw, " ")
-	if len(strings.TrimSpace(date.Format)) == 0 {
-		date.Format = "2006-01-02T15:04:05.000"
+	if len(strings.TrimSpace(date.format)) == 0 {
+		date.format = "2006-01-02T15:04:05.000"
 	}
-	tp, err := time.Parse(date.Format, raw)
+	tp, err := time.Parse(date.format, raw)
 	if err != nil {
 		return err
 	}
-	date.SipDate = tp
+	date.sipDate = tp
 	return nil
 }
 func (date *Date) Validator() error {
 	if date == nil {
 		return errors.New("date caller is not allowed to be nil")
 	}
-	if len(strings.TrimSpace(date.Field)) == 0 {
+	if len(strings.TrimSpace(date.field)) == 0 {
 		return errors.New("field is not allowed to be empty")
 	}
-	if !regexp.MustCompile(`(?i)(date)`).Match([]byte(date.Field)) {
+	if !regexp.MustCompile(`(?i)(date)`).Match([]byte(date.field)) {
 		return errors.New("field is not match")
 	}
 	return nil

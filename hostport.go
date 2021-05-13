@@ -1,7 +1,6 @@
 package sip
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -22,71 +21,83 @@ import (
 // hexseq         =  hex4 *( ":" hex4)
 // hex4           =  1*4HEXDIG
 // port           =  1*DIGIT
+
 type HostPort struct {
 	*Host
-	Port uint16 `json:"port,omitempty"`
+	port uint16
 }
 
-func CreateHostPort() Sip {
-	return &HostPort{}
+func (hostPort *HostPort) Port() uint16 {
+	return hostPort.port
 }
 
-func NewHostPort(host *Host, port uint16) Sip {
+func (hostPort *HostPort) SetPort(port uint16) {
+	hostPort.port = port
+}
+
+func NewHostPort(host *Host, port uint16) *HostPort {
 	return &HostPort{
 		Host: host,
-		Port: port,
+		port: port,
 	}
 }
-func (hp *HostPort) Raw() string {
+func (hostPort *HostPort) Raw() (string, error) {
 	result := ""
-	if hp == nil {
-		return result
+	if err := hostPort.Validator(); err != nil {
+		return result, err
 	}
-	if hp.Host != nil {
-		result += hp.Host.Raw()
+	if hostPort.Host != nil {
+		res, err := hostPort.Host.Raw()
+		if err != nil {
+			return result, err
+		}
+		result += res
 	}
-	if hp.Port > 0 {
-		result += fmt.Sprintf(":%v", hp.Port)
+	if hostPort.port > 0 {
+		result += fmt.Sprintf(":%v", hostPort.port)
 	}
+	return result, nil
+}
+func (hostPort *HostPort) String() string {
+	result := ""
+	if hostPort.Host != nil {
+		result += fmt.Sprintf("%s,", hostPort.Host.String())
+	}
+	if hostPort.port > 0 {
+		result += fmt.Sprintf("port: %v,", hostPort.port)
+	}
+	result = strings.TrimSuffix(result, ",")
 	return result
 }
-func (hp *HostPort) JsonString() string {
-	result := ""
-	if hp == nil {
-		return result
+func (hostPort *HostPort) Parser(raw string) error {
+	if hostPort == nil {
+		return errors.New("hostPort caller is not allowed to be nil")
 	}
-	data, err := json.Marshal(hp)
-	if err != nil {
-		return result
-	}
-	result = fmt.Sprintf("%s", data)
-	return result
-}
-func (hp *HostPort) Parser(raw string) error {
-	raw = strings.TrimPrefix(raw, " ")
-	raw = strings.TrimSuffix(raw, " ")
-	if hp == nil {
-		return errors.New("HostPort caller is not allowed to be nil")
-	}
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = strings.TrimLeft(raw, " ")
+	raw = strings.TrimRight(raw," ")
+	raw = strings.TrimPrefix(raw," ")
+	raw = strings.TrimSuffix(raw," ")
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
-	if regexp.MustCompile(`\:\d+$`).MatchString(raw) {
-		portRaw := regexp.MustCompile(`\:\d+$`).FindString(raw)
+	if regexp.MustCompile(`:\d+$`).MatchString(raw) {
+		portRaw := regexp.MustCompile(`:\d+$`).FindString(raw)
 		portStr := strings.TrimPrefix(portRaw, ":")
 		port, err := strconv.Atoi(portStr)
 		if err != nil {
 			return err
 		}
-		hp.Port = uint16(port)
+		hostPort.port = uint16(port)
 		raw = strings.Replace(raw, portRaw, "", 1)
 	}
-	hp.Host = CreateHost().(*Host)
-	return hp.Host.Parser(raw)
+	hostPort.Host = new(Host)
+	return hostPort.Host.Parser(raw)
 }
-func (hp *HostPort) Validator() error {
-	if hp == nil {
-		return errors.New("HostPort caller is not allowed to be nil")
+func (hostPort *HostPort) Validator() error {
+	if hostPort == nil {
+		return errors.New("hostPort caller is not allowed to be nil")
 	}
-	return hp.Host.Validator()
+	return hostPort.Host.Validator()
 }

@@ -1,85 +1,114 @@
 package sip
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
+	"regexp"
 	"strings"
 )
 
 type Host struct {
-	Hostname      string `json:"hostname"`
-	IPv4address   net.IP `json:"ipv4address"`
-	IPv6reference net.IP `json:"ipv6reference"`
+	hostName      string
+	ipv4Address   net.IP
+	ipv6Reference net.IP
 }
 
-func CreateHost() Sip {
-	return &Host{}
+func (host *Host) HostName() string {
+	return host.hostName
 }
-func NewHost(hostname string, ipv4, ipv6 net.IP) Sip {
+
+func (host *Host) SetHostName(hostName string) {
+	host.hostName = hostName
+}
+
+func (host *Host) Ipv4Address() net.IP {
+	return host.ipv4Address
+}
+
+func (host *Host) SetIpv4Address(ipv4Address net.IP) {
+	host.ipv4Address = ipv4Address
+}
+
+func (host *Host) Ipv6Reference() net.IP {
+	return host.ipv6Reference
+}
+
+func (host *Host) SetIpv6Reference(ipv6Reference net.IP) {
+	host.ipv6Reference = ipv6Reference
+}
+
+func NewHost(hostName string, ipv4, ipv6 net.IP) *Host {
 	return &Host{
-		Hostname:      hostname,
-		IPv4address:   ipv4,
-		IPv6reference: ipv6,
+		hostName:      hostName,
+		ipv4Address:   ipv4,
+		ipv6Reference: ipv6,
 	}
 }
-func (h *Host) Raw() string {
+
+func (host *Host) Raw() (string, error) {
 	result := ""
-	if h == nil {
-		return result
+	if err := host.Validator(); err != nil {
+		return result, err
 	}
 	switch {
-	case len(strings.TrimSpace(h.Hostname)) > 0:
-		result += h.Hostname
-	case h.IPv4address != nil:
-		result += h.IPv4address.String()
-	case h.IPv6reference != nil:
-		result += h.IPv6reference.String()
+	case len(strings.TrimSpace(host.hostName)) > 0:
+		result += host.hostName
+	case host.ipv4Address != nil:
+		result += host.ipv4Address.String()
+	case host.ipv6Reference != nil:
+		result += host.ipv6Reference.String()
 	}
+	return result, nil
+}
+func (host *Host) String() string {
+	result:=""
+	if len(strings.TrimSpace(host.hostName))>0{
+		result+=fmt.Sprintf("hostname: %s,",host.hostName)
+	}
+	if host.ipv4Address!=nil{
+		result+=fmt.Sprintf("ipv4-address: %s,",host.ipv4Address.String())
+	}
+	if host.ipv6Reference!=nil{
+		result+=fmt.Sprintf("ipv6-reference: %s,",host.ipv6Reference.String())
+	}
+	result=strings.TrimSuffix(result,",")
 	return result
 }
-func (h *Host) JsonString() string {
-	result := ""
-	if h == nil {
-		return result
+
+func (host *Host) Parser(raw string) error {
+	if host == nil {
+		return errors.New("host caller is not allowed to be nil")
 	}
-	data, err := json.Marshal(h)
-	if err != nil {
-		return result
-	}
-	result = fmt.Sprintf("%s", data)
-	return result
-}
-func (h *Host) Parser(raw string) error {
-	raw = strings.TrimPrefix(raw, " ")
-	raw = strings.TrimSuffix(raw, " ")
-	if h == nil {
-		return errors.New("Host caller is not allowed to be nil")
-	}
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = strings.TrimLeft(raw, " ")
+	raw = strings.TrimRight(raw," ")
+	raw = strings.TrimPrefix(raw," ")
+	raw = strings.TrimSuffix(raw," ")
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
 	ip := net.ParseIP(raw)
 	if ip == nil {
-		h.Hostname = raw
+		host.hostName = raw
 	} else {
 		if ipv4 := ip.To4(); ipv4 != nil {
-			h.IPv4address = ipv4
+			host.ipv4Address = ipv4
 		} else if ipv6 := ip.To16(); ipv6 != nil {
-			h.IPv6reference = ipv6
+			host.ipv6Reference = ipv6
 		} else {
-			h.Hostname = raw
+			host.hostName = raw
 		}
 	}
 	return nil
 }
-func (h *Host) Validator() error {
-	if h == nil {
-		return errors.New("Host caller is not allowed to be nil")
+func (host *Host) Validator() error {
+	if host == nil {
+		return errors.New("host caller is not allowed to be nil")
 	}
-	if len(strings.TrimSpace(h.Hostname)) == 0 && h.IPv4address == nil && h.IPv6reference == nil {
-		return errors.New("hostname or IPv4address or IPv6reference must has one")
+	if len(strings.TrimSpace(host.hostName)) == 0 && host.ipv4Address == nil && host.ipv6Reference == nil {
+		return errors.New("hostName or ipv4Address or ipv6Reference must has one")
 	}
 	return nil
 }

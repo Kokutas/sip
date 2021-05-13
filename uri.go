@@ -1,7 +1,6 @@
 package sip
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -61,46 +60,63 @@ import (
 // hnv-unreserved  =  "[" / "]" / "/" / "?" / ":" / "+" / "$"
 
 type SipUri struct {
-	Schema      string `json:"schema"`
-	*UserInfo   `json:"userinfo"`
-	*HostPort   `json:"hostport"`
-	*Parameters `json:"uri-parameters,omitempty"`
-	Headers     map[string]interface{} `json:"headers,omitempty"`
+	schema string
+	*UserInfo
+	*HostPort
+	*Parameters
+	headers map[string]interface{}
 }
 
-func CreateSipUri() Sip {
-	return &SipUri{}
+func (su *SipUri) Schema() string {
+	return su.schema
 }
-func NewSipUri(schema string, userinfo *UserInfo, hostport *HostPort, parameters *Parameters, headers map[string]interface{}) Sip {
-	return &SipUri{
-		schema,
-		userinfo,
-		 hostport,
-		parameters,
-		headers,
-	}
+func (su *SipUri) SetSchema(schema string) {
+	su.schema = schema
 }
 
-func (su *SipUri) Raw() string {
+func (su *SipUri) Headers() map[string]interface{} {
+	return su.headers
+}
+
+func (su *SipUri) SetHeaders(headers map[string]interface{}) {
+	su.headers = headers
+}
+func NewSipUri(schema string, userInfo *UserInfo, hostPort *HostPort, parameters *Parameters, headers map[string]interface{}) *SipUri {
+	return &SipUri{schema: schema, UserInfo: userInfo, HostPort: hostPort, Parameters: parameters, headers: headers}
+}
+
+func (su *SipUri) Raw() (string, error) {
 	result := ""
-	if su == nil {
-		return result
+	if err := su.Validator(); err != nil {
+		return result, err
 	}
-	if len(strings.TrimSpace(su.Schema)) > 0 {
-		result += fmt.Sprintf("%s:", su.Schema)
+	if len(strings.TrimSpace(su.schema)) > 0 {
+		result += fmt.Sprintf("%s:", su.schema)
 	}
 	if su.UserInfo != nil {
-		result += su.UserInfo.Raw()
+		res, err := su.UserInfo.Raw()
+		if err != nil {
+			return "", err
+		}
+		result += res
 	}
 	if su.HostPort != nil {
-		result += "@" + su.HostPort.Raw()
+		res, err := su.HostPort.Raw()
+		if err != nil {
+			return "", err
+		}
+		result += "@" + res
 	}
 	if su.Parameters != nil {
-		result += su.Parameters.Raw()
+		res, err := su.Parameters.Raw()
+		if err != nil {
+			return "", err
+		}
+		result += res
 	}
-	if su.Headers != nil {
+	if su.headers != nil {
 		headers := ""
-		for k, v := range su.Headers {
+		for k, v := range su.headers {
 			headers += fmt.Sprintf("%v=%v&", k, v)
 		}
 		headers = strings.TrimSuffix(headers, "&")
@@ -108,40 +124,52 @@ func (su *SipUri) Raw() string {
 			result += "?" + headers
 		}
 	}
-	return result
+	return result, nil
 }
-func (su *SipUri) JsonString() string {
+func (su *SipUri) String() string {
 	result := ""
-	if su == nil {
-		return result
+	if len(strings.TrimSpace(su.schema)) > 0 {
+		result += fmt.Sprintf("schema: %s,", su.schema)
 	}
-	data, err := json.Marshal(su)
-	if err != nil {
-		return result
+	if su.UserInfo!=nil {
+		result += fmt.Sprintf("%s,", su.UserInfo.String())
 	}
-	result = fmt.Sprintf("%s", data)
+	if su.HostPort!=nil {
+		result += fmt.Sprintf("%s,", su.HostPort.String())
+	}
+	if su.Parameters!=nil {
+		result += fmt.Sprintf("%s,", su.Parameters.String())
+	}
+	if su.headers!=nil {
+		result += fmt.Sprintf("headers: %s,", su.headers)
+	}
+	result = strings.TrimSuffix(result, ",")
 	return result
 }
 func (su *SipUri) Parser(raw string) error {
-	raw = strings.TrimPrefix(raw, " ")
-	raw = strings.TrimSuffix(raw, " ")
 	if su == nil {
 		return errors.New("sipUri caller is not allowed to be nil")
 	}
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = strings.TrimLeft(raw, " ")
+	raw = strings.TrimRight(raw," ")
+	raw = strings.TrimPrefix(raw," ")
+	raw = strings.TrimSuffix(raw," ")
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
-	schemaRegexp := regexp.MustCompile(`^\w+\:`)
+	schemaRegexp := regexp.MustCompile(`^\w+:`)
 	if schemaRegexp.MatchString(raw) {
 		schema := regexp.MustCompile(`\w+`).FindString(schemaRegexp.FindString(raw))
-		su.Schema = strings.ToLower(schema)
+		su.schema = strings.ToLower(schema)
 	}
 	userinfoRegexp := regexp.MustCompile(`.*@`)
 	if userinfoRegexp.MatchString(raw) {
 		ui := userinfoRegexp.FindString(raw)
 		ui = schemaRegexp.ReplaceAllString(ui, "")
 		ui = regexp.MustCompile(`@`).ReplaceAllString(ui, "")
-		su.UserInfo = CreateUserInfo()
+		su.UserInfo = new(UserInfo)
 		if err := su.UserInfo.Parser(ui); err != nil {
 			return err
 		}
@@ -151,7 +179,7 @@ func (su *SipUri) Parser(raw string) error {
 		hp := hostportRegexp.FindString(raw)
 		hp = regexp.MustCompile(`@`).ReplaceAllString(hp, "")
 		hp = regexp.MustCompile(`;.*`).ReplaceAllString(hp, "")
-		su.HostPort = CreateHostPort().(*HostPort)
+		su.HostPort = new(HostPort)
 		if err := su.HostPort.Parser(hp); err != nil {
 			return err
 		}
@@ -160,34 +188,33 @@ func (su *SipUri) Parser(raw string) error {
 	if parametersRegexp.MatchString(raw) {
 		ps := parametersRegexp.FindString(raw)
 		ps = regexp.MustCompile(`\?.*`).ReplaceAllString(ps, "")
-		su.Parameters = CreateParameters().(*Parameters)
+		su.Parameters = new(Parameters)
 		if err := su.Parameters.Parser(ps); err != nil {
 			return err
 		}
 	}
 	headersRegexp := regexp.MustCompile(`\?.*`)
 	if headersRegexp.MatchString(raw) {
-		su.Headers = make(map[string]interface{})
+		su.headers = make(map[string]interface{})
 		h := headersRegexp.FindString(raw)
 		h = regexp.MustCompile(`\?`).ReplaceAllString(h, "")
 		hs := strings.Split(h, "&")
 		for _, vh := range hs {
 			vs := strings.Split(vh, "=")
 			if len(vs) > 1 {
-				su.Headers[vs[0]] = vs[1]
+				su.headers[vs[0]] = vs[1]
 			} else {
-				su.Headers[vs[0]] = ""
+				su.headers[vs[0]] = ""
 			}
 		}
 	}
-
 	return nil
 }
 func (su *SipUri) Validator() error {
 	if su == nil {
 		return errors.New("sipUri caller is not allowed to be nil")
 	}
-	if len(strings.TrimSpace(su.Schema)) == 0 {
+	if len(strings.TrimSpace(su.schema)) == 0 {
 		return errors.New("schema is not allowed to be empty")
 	}
 	if err := su.UserInfo.Validator(); err != nil {

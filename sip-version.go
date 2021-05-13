@@ -9,62 +9,80 @@ import (
 )
 
 // SIP-Version    =  "SIP" "/" 1*DIGIT "." 1*DIGIT
+
 type SipVersion struct {
-	Schema  string  `json:"schema"`
-	Version float32 `json:"version"`
+	schema  string
+	version float32
 }
 
-func CreateSipVersion() Sip {
-	return &SipVersion{}
+func (sv *SipVersion) Schema() string {
+	return sv.schema
 }
-func NewSipVersion(schema string, version float32) Sip {
-	return &SipVersion{Schema: schema, Version: version}
+
+func (sv *SipVersion) SetSchema(schema string) {
+	sv.schema = schema
 }
-func (sv *SipVersion) Raw() string {
+
+func (sv *SipVersion) Version() float32 {
+	return sv.version
+}
+
+func (sv *SipVersion) SetVersion(version float32) {
+	sv.version = version
+}
+func NewSipVersion(schema string, version float32) *SipVersion {
+	return &SipVersion{schema: schema, version: version}
+}
+
+func (sv *SipVersion) Raw() (string, error) {
 	result := ""
-	if sv == nil {
-		return result
+	if err := sv.Validator(); err != nil {
+		return result, err
 	}
-	if len(strings.TrimSpace(sv.Schema)) == 0 {
-		sv.Schema = "SIP"
+	if len(strings.TrimSpace(sv.schema)) == 0 {
+		sv.schema = "SIP"
 	}
-	if sv.Version > 0 {
-		result += fmt.Sprintf("%v/%1.1f", strings.ToUpper(sv.Schema), sv.Version)
+	if sv.version > 0 {
+		result += fmt.Sprintf("%v/%1.1f", strings.ToUpper(sv.schema), sv.version)
 	}
-	return result
+	return result, nil
 }
-func (sv *SipVersion) JsonString() string {
-	result := ""
+func (sv *SipVersion) String() string {
+	result:=""
+	if len(strings.TrimSpace(sv.schema))>0{
+		result+=fmt.Sprintf("shcema: %s,",sv.schema)
+	}
+	if sv.version>0{
+		result+=fmt.Sprintf("version: %1.1f,",sv.version)
+	}
+	result = strings.TrimSuffix(result,",")
 	return result
 }
 func (sv *SipVersion) Parser(raw string) error {
-	raw = strings.TrimPrefix(raw, " ")
-	raw = strings.TrimSuffix(raw, " ")
-	raw = strings.TrimSuffix(raw, "\r")
-	raw = strings.TrimSuffix(raw, "\n")
-	raw = strings.TrimPrefix(raw, "\r")
-	raw = strings.TrimPrefix(raw, "\n")
-	raw = strings.TrimSuffix(raw, " ")
-	raw = strings.TrimPrefix(raw, " ")
 	if sv == nil {
-		return errors.New("SipVersion caller is not allowed to be nil")
+		return errors.New("sipVersion caller is not allowed to be nil")
 	}
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = strings.TrimLeft(raw, " ")
+	raw = strings.TrimRight(raw," ")
+	raw = strings.TrimPrefix(raw," ")
+	raw = strings.TrimSuffix(raw," ")
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
-	sv.Schema = regexp.MustCompile(`/`).ReplaceAllString(regexp.MustCompile(`.*/`).FindString(raw), "")
+	sv.schema = regexp.MustCompile(`/`).ReplaceAllString(regexp.MustCompile(`.*/`).FindString(raw), "")
 	versions := regexp.MustCompile(`\d+.*`).FindString(raw)
 	version, err := strconv.ParseFloat(versions, 32)
 	if err != nil {
 		return err
 	}
-	sv.Version = float32(version)
-
+	sv.version = float32(version)
 	return nil
 }
 func (sv *SipVersion) Validator() error {
 	if sv == nil {
-		return errors.New("SipVersion caller is not allowed to be nil")
+		return errors.New("sipVersion caller is not allowed to be nil")
 	}
 	// sip-schema regexp
 	sipSchemaRegexpStr := `(?i)(`
@@ -73,10 +91,12 @@ func (sv *SipVersion) Validator() error {
 	}
 	sipSchemaRegexpStr = strings.TrimSuffix(sipSchemaRegexpStr, "|")
 	sipSchemaRegexpStr += ")"
-	sipVersionRegexp := regexp.MustCompile(sipSchemaRegexpStr + `/\d+\.\d+`)
-	if !sipVersionRegexp.MatchString(sv.Raw()) {
-		return errors.New("invalid sipVersion")
+	sipSchemaRegexp:=regexp.MustCompile(sipSchemaRegexpStr)
+	if len(strings.TrimSpace(sv.schema))==0{
+		return  errors.New("schema is not allowed to be empty")
 	}
-
+	if !sipSchemaRegexp.MatchString(sv.schema){
+		return errors.New("invalid schema")
+	}
 	return nil
 }

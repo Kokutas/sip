@@ -1,12 +1,9 @@
 package header
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"regexp"
-	"sip"
 	"sip/util"
 	"strconv"
 	"strings"
@@ -30,64 +27,77 @@ import (
 //
 //Expires     =  "Expires" HCOLON delta-seconds
 type Expires struct {
-	Field    string `json:"field"`
-	Secondes uint   `json:"delta-seconds"`
+	field    string
+	seconds uint
 }
 
-func CreateExpires() sip.Sip {
-	return &Expires{}
+func (expires *Expires) Field() string {
+	return expires.field
 }
-func NewExpires(secondes uint) sip.Sip {
+
+func (expires *Expires) SetField(field string) {
+	expires.field = field
+}
+
+func (expires *Expires) Seconds() uint {
+	return expires.seconds
+}
+
+func (expires *Expires) SetSeconds(seconds uint) {
+	expires.seconds = seconds
+}
+
+func NewExpires(seconds uint) *Expires {
 	return &Expires{
-		Field:    "Expires",
-		Secondes: secondes,
+		field:    "Expires",
+		seconds: seconds,
 	}
 }
-func (expires *Expires) Raw() string {
+func (expires *Expires) Raw() (string, error) {
 	result := ""
-	if reflect.DeepEqual(nil, expires) {
-		return result
+	if err := expires.Validator(); err != nil {
+		return result, err
 	}
-	result += fmt.Sprintf("%v:", strings.Title(expires.Field))
-	result += fmt.Sprintf(" %v", expires.Secondes)
+	if len(strings.TrimSpace(expires.field)) == 0 {
+		expires.field = "Expires"
+	}
+	result += fmt.Sprintf("%s:", strings.Title(expires.field))
+	result += fmt.Sprintf(" %d", expires.seconds)
 	result += "\r\n"
-	return result
+	return result, nil
 }
-func (expires *Expires) JsonString() string {
+func (expires *Expires) String() string {
 	result := ""
-	if reflect.DeepEqual(nil, expires) {
-		return result
+	if len(strings.TrimSpace(expires.field)) > 0 {
+		result += fmt.Sprintf("field: %s,", expires.field)
 	}
-	data, err := json.Marshal(expires)
-	if err != nil {
-		return result
+	if expires.seconds >= 0 {
+		result += fmt.Sprintf("delta-seconds: %d,", expires.seconds)
 	}
-	result += fmt.Sprintf("%s", data)
+	result = strings.TrimSuffix(result, ",")
 	return result
 }
 func (expires *Expires) Parser(raw string) error {
 	if expires == nil {
 		return errors.New("expires caller is not allowed to be nil")
 	}
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = util.TrimPrefixAndSuffix(raw, " ")
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
-	raw = util.TrimPrefixAndSuffix(raw, " ")
-	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
-	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
-
 	fieldRegexp := regexp.MustCompile(`(?i)(expires)`)
 	if fieldRegexp.MatchString(raw) {
-		expires.Field = fieldRegexp.FindString(raw)
+		expires.field = fieldRegexp.FindString(raw)
 	}
-
 	secondsRegexp := regexp.MustCompile(`\d+`)
 	if secondsRegexp.MatchString(raw) {
 		seconds, err := strconv.Atoi(secondsRegexp.FindString(raw))
 		if err != nil {
 			return err
 		}
-		expires.Secondes = uint(seconds)
+		expires.seconds = uint(seconds)
 	} else {
 		return errors.New("delta-seconds is not match")
 	}
@@ -97,10 +107,10 @@ func (expires *Expires) Validator() error {
 	if expires == nil {
 		return errors.New("expires caller is not allowed to be nil")
 	}
-	if len(strings.TrimSpace(expires.Field)) == 0 {
+	if len(strings.TrimSpace(expires.field)) == 0 {
 		return errors.New("field is not allowed to be empty")
 	}
-	if !regexp.MustCompile(`(?i)(expires)`).Match([]byte(expires.Field)) {
+	if !regexp.MustCompile(`(?i)(expires)`).Match([]byte(expires.field)) {
 		return errors.New("field is not match")
 	}
 	return nil

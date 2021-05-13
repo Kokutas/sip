@@ -1,7 +1,6 @@
 package header
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -33,83 +32,133 @@ import (
 //			/ addr-spec ) *( SEMI to-param )
 //to-param  =  tag-param / generic-param
 type To struct {
-	Field       string      `json:"field"`
-	DisplayName string      `json:"display-name"`
-	Addr        *sip.SipUri `json:"name-addr/addr-spec"`
-	Tag         string      `json:"tag"`
+	field       string
+	displayName string
+	addr        *sip.SipUri
+	tag         string
 }
 
-func CreateTo() sip.Sip {
-	return &To{}
+func (to *To) Field() string {
+	return to.field
 }
-func NewTo(displayName string, addr *sip.SipUri, tag string) sip.Sip {
+
+func (to *To) SetField(field string) {
+	to.field = field
+}
+
+func (to *To) DisplayName() string {
+	return to.displayName
+}
+
+func (to *To) SetDisplayName(displayName string) {
+	to.displayName = displayName
+}
+
+func (to *To) Addr() *sip.SipUri {
+	return to.addr
+}
+
+func (to *To) SetAddr(addr *sip.SipUri) {
+	to.addr = addr
+}
+
+func (to *To) Tag() string {
+	return to.tag
+}
+
+func (to *To) SetTag(tag string) {
+	to.tag = tag
+}
+
+func NewTo(displayName string, addr *sip.SipUri, tag string) *To {
 	return &To{
-		Field:       "To",
-		DisplayName: displayName,
-		Addr:        addr,
-		Tag:         tag,
+		field:       "To",
+		displayName: displayName,
+		addr:        addr,
+		tag:         tag,
 	}
 }
 
-func (to *To) Raw() string {
+func (to *To) Raw() (string, error) {
 	result := ""
-	if reflect.DeepEqual(nil, to) {
-		return result
+	if err := to.Validator(); err != nil {
+		return result, err
+	}
+	if len(strings.TrimSpace(to.field)) == 0 {
+		to.field = "To"
 	}
 	//The optional "display-name" is meant to be rendered by a human-user
 	//interface.  The "tag" parameter serves as a general mechanism for
 	//dialog identification.
-	result += fmt.Sprintf("%v:", strings.Title(to.Field))
-	if len(strings.TrimSpace(to.DisplayName)) > 0 {
-		if strings.Contains(to.DisplayName, "\"") {
-			result += fmt.Sprintf(" %v", to.DisplayName)
+	result += fmt.Sprintf("%s:", strings.Title(to.field))
+	if len(strings.TrimSpace(to.displayName)) > 0 {
+		if strings.Contains(to.displayName, "\"") {
+			result += fmt.Sprintf(" %s", to.displayName)
 		} else {
-			result += fmt.Sprintf(" \"%v\"", to.DisplayName)
+			result += fmt.Sprintf(" \"%v\"", to.displayName)
 		}
 		//	if !reflect.DeepEqual(nil, to.Addr) {
-		//		result += fmt.Sprintf(" %v", to.Addr.Raw())
+		//		res,err:=to.addr.Raw()
+		//		if err!=nil{
+		//			return "",err
+		//		}
+		//		result += fmt.Sprintf(" %v", res)
 		//	}
 		//} else {
-		//	if !reflect.DeepEqual(nil, to.Addr) {
-		//		result += fmt.Sprintf(" <%v>", to.Addr.Raw())
+		//	if !reflect.DeepEqual(nil, to.addr) {
+		//		res,err:=to.addr.Raw()
+		//		if err!=nil{
+		//			return "",err
+		//		}
+		//		result += fmt.Sprintf(" <%v>", res)
 		//	}
 	}
 	// If the name-addr / addr-spec need to be commented as follows, release the comment in the display name
-	if !reflect.DeepEqual(nil, to.Addr) {
-		result += fmt.Sprintf(" <%v>", to.Addr.Raw())
+	if !reflect.DeepEqual(nil, to.addr) {
+		res, err := to.addr.Raw()
+		if err != nil {
+			return "", err
+		}
+		result += fmt.Sprintf(" <%v>", res)
 	}
-	if len(strings.TrimSpace(to.Tag)) > 0 {
-		result += fmt.Sprintf(";tag=%v", to.Tag)
+	if len(strings.TrimSpace(to.tag)) > 0 {
+		result += fmt.Sprintf(";tag=%v", to.tag)
 	}
 	result += "\r\n"
-	return result
+	return result, nil
 }
-func (to *To) JsonString() string {
+func (to *To) String() string {
 	result := ""
-	if reflect.DeepEqual(nil, to) {
-		return result
+	if len(strings.TrimSpace(to.field)) > 0 {
+		result += fmt.Sprintf("field: %s,", to.field)
 	}
-	if data, err := json.Marshal(to); err == nil {
-		result = fmt.Sprintf("%s", data)
+	if len(strings.TrimSpace(to.displayName)) > 0 {
+		result += fmt.Sprintf("display-name: %s,", to.displayName)
 	}
+	if to.addr != nil {
+		result += fmt.Sprintf("%s,", to.addr.String())
+	}
+	if len(strings.TrimSpace(to.tag)) > 0 {
+		result += fmt.Sprintf("tag: %s,", to.tag)
+	}
+	result = strings.TrimSuffix(result, ",")
 	return result
 }
 func (to *To) Parser(raw string) error {
 	if to == nil {
 		return errors.New("to caller is not allowed to be nil")
 	}
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = util.TrimPrefixAndSuffix(raw, " ")
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
-	raw = util.TrimPrefixAndSuffix(raw, " ")
-	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
-	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
-
 	// filed regexp
 	fieldRegexp := regexp.MustCompile(`(?i)(to).*?:`)
 	if fieldRegexp.MatchString(raw) {
 		field := fieldRegexp.FindString(raw)
-		to.Field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
+		to.field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
 		raw = strings.ReplaceAll(raw, field, "")
 		raw = strings.TrimSuffix(raw, " ")
 		raw = strings.TrimPrefix(raw, " ")
@@ -129,7 +178,7 @@ func (to *To) Parser(raw string) error {
 		displayNames = regexp.MustCompile(`<`).ReplaceAllString(displayNames, "")
 		displayNames = regexp.MustCompile(`:`).ReplaceAllString(displayNames, "")
 		raw = regexp.MustCompile(`.*`+displayNames).ReplaceAllString(raw, "")
-		to.DisplayName = util.TrimPrefixAndSuffix(displayNames, " ")
+		to.displayName = util.TrimPrefixAndSuffix(displayNames, " ")
 		raw = util.TrimPrefixAndSuffix(raw, " ")
 	}
 	// tag
@@ -137,7 +186,7 @@ func (to *To) Parser(raw string) error {
 	if tagRegexp.MatchString(raw) {
 		tag := tagRegexp.FindString(raw)
 		raw = tagRegexp.ReplaceAllString(raw, "")
-		to.Tag = regexp.MustCompile(`;(?i)tag=`).ReplaceAllString(tag, "")
+		to.tag = regexp.MustCompile(`;(?i)tag=`).ReplaceAllString(tag, "")
 	}
 	// addr regexp
 	addrRegexp := regexp.MustCompile(schemasRegexpStr + `.*`)
@@ -148,8 +197,8 @@ func (to *To) Parser(raw string) error {
 		addr = regexp.MustCompile(`>.*`).ReplaceAllString(addr, "")
 		addr = util.TrimPrefixAndSuffix(addr, ";")
 		addr = util.TrimPrefixAndSuffix(addr, " ")
-		to.Addr = sip.CreateSipUri().(*sip.SipUri)
-		if err := to.Addr.Parser(addr); err != nil {
+		to.addr = new(sip.SipUri)
+		if err := to.addr.Parser(addr); err != nil {
 			return err
 		}
 	}
@@ -160,49 +209,11 @@ func (to *To) Validator() error {
 	if to == nil {
 		return errors.New("to caller is not allowed to be nil")
 	}
-	if len(strings.TrimSpace(to.Field)) == 0 {
+	if len(strings.TrimSpace(to.field)) == 0 {
 		return errors.New("field is not allowed to be empty")
 	}
-	if !regexp.MustCompile(`(?i)(to)`).Match([]byte(to.Field)) {
+	if !regexp.MustCompile(`(?i)(to)`).Match([]byte(to.field)) {
 		return errors.New("field is not match")
 	}
-	return to.Addr.Validator()
-}
-
-func (to *To) String() string {
-	result := ""
-	if reflect.DeepEqual(nil, to) {
-		return result
-	}
-	//The optional "display-name" is meant to be rendered by a human-user
-	//interface.  The "tag" parameter serves as a general mechanism for
-	//dialog identification.
-	if len(strings.TrimSpace(to.DisplayName)) > 0 {
-		if strings.Contains(to.DisplayName, "\"") {
-			result += fmt.Sprintf("%v", to.DisplayName)
-		} else {
-			result += fmt.Sprintf("\"%v\"", to.DisplayName)
-		}
-		//	if !reflect.DeepEqual(nil, to.Addr) {
-		//		result += fmt.Sprintf(" %v", to.Addr.Raw())
-		//	}
-		//} else {
-		//	if !reflect.DeepEqual(nil, to.Addr) {
-		//		result += fmt.Sprintf(" <%v>", to.Addr.Raw())
-		//	}
-		// If the name-addr / addr-spec need to be commented as follows, release the comment in the display name
-		if !reflect.DeepEqual(nil, to.Addr) {
-			result += fmt.Sprintf(" <%v>", to.Addr.Raw())
-		}
-	} else {
-		// If the name-addr / addr-spec need to be commented as follows, release the comment in the display name
-		if !reflect.DeepEqual(nil, to.Addr) {
-			result += fmt.Sprintf("<%v>", to.Addr.Raw())
-		}
-	}
-
-	if len(strings.TrimSpace(to.Tag)) > 0 {
-		result += fmt.Sprintf(";tag=%v", to.Tag)
-	}
-	return result
+	return to.addr.Validator()
 }

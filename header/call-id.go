@@ -1,10 +1,8 @@
 package header
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"regexp"
 	"sip"
 	"sip/util"
@@ -50,47 +48,65 @@ import (
 //callid   =  word [ "@" word ]
 
 type CallID struct {
-	Field     string `json:"field"`
-	CallId    string `json:"call-id"`
-	*sip.Host `json:"host,omitempty"`
+	field  string
+	callId string
+	*sip.Host
 }
 
-func CreateCallID() sip.Sip {
-	return &CallID{}
+func (c *CallID) Field() string {
+	return c.field
 }
+
+func (c *CallID) SetField(field string) {
+	c.field = field
+}
+
+func (c *CallID) CallId() string {
+	return c.callId
+}
+
+func (c *CallID) SetCallId(callId string) {
+	c.callId = callId
+}
+
 func NewCallID(callId string, host *sip.Host) *CallID {
-	return &CallID{
-		Field:  "Call-ID",
-		CallId: callId,
-		Host:   host,
-	}
+	return &CallID{field: "Call-ID", callId: callId, Host: host}
 }
 
-func (c *CallID) Raw() string {
+func (c *CallID) Raw() (string,error) {
 	result := ""
-	if reflect.DeepEqual(nil, c) {
-		return result
+	if err:=c.Validator();err!=nil {
+		return result,err
 	}
-	result += fmt.Sprintf("%v:", c.Field)
-	if len(strings.TrimSpace(c.CallId)) > 0 {
-		result += fmt.Sprintf(" %v", c.CallId)
+	if len(strings.TrimSpace(c.field))==0{
+		c.field = "Call-ID"
+	}
+	result += fmt.Sprintf("%v:", c.field)
+	if len(strings.TrimSpace(c.callId)) > 0 {
+		result += fmt.Sprintf(" %v", c.callId)
 		if c.Host != nil {
-			result += fmt.Sprintf("@%v", c.Host.Raw())
+			res,err:=c.Host.Raw()
+			if err!=nil{
+				return "",err
+			}
+			result += fmt.Sprintf("@%v", res)
 		}
 	}
 	result += "\r\n"
-	return result
+	return result,nil
 }
-func (c *CallID) JsonString() string {
+func (c *CallID) String() string {
 	result := ""
-	if reflect.DeepEqual(nil, c) {
-		return result
+	if len(strings.TrimSpace(c.field))>0{
+		result+=fmt.Sprintf("field: %s,",c.field)
 	}
-	data, err := json.Marshal(c)
-	if err != nil {
-		return result
+	if len(strings.TrimSpace(c.callId))>0{
+		result +=fmt.Sprintf("call-id: %s,",c.callId)
 	}
-	result = fmt.Sprintf("%s", data)
+	if c.Host!=nil{
+		result +=fmt.Sprintf("%s,",c.Host.String())
+	}
+	result = strings.TrimSuffix(result,",")
 	return result
 }
 func (c *CallID) Parser(raw string) error {
@@ -100,15 +116,14 @@ func (c *CallID) Parser(raw string) error {
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
-	raw = util.TrimPrefixAndSuffix(raw, " ")
 	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
 	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
-
+	raw = util.TrimPrefixAndSuffix(raw, " ")
 	// filed regexp
 	fieldRegexp := regexp.MustCompile(`(?i)(call-id).*?:`)
 	if fieldRegexp.MatchString(raw) {
 		field := fieldRegexp.FindString(raw)
-		c.Field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
+		c.field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
 		raw = strings.ReplaceAll(raw, field, "")
 		raw = strings.TrimSuffix(raw, " ")
 		raw = strings.TrimPrefix(raw, " ")
@@ -119,7 +134,7 @@ func (c *CallID) Parser(raw string) error {
 	if hostRegexp.MatchString(raw) {
 		host := regexp.MustCompile(`@`).ReplaceAllLiteralString(hostRegexp.FindString(raw), "")
 		host = util.TrimPrefixAndSuffix(host, " ")
-		c.Host = sip.CreateHost().(*sip.Host)
+		c.Host = new(sip.Host)
 		if err := c.Host.Parser(host); err != nil {
 			return err
 		}
@@ -127,18 +142,18 @@ func (c *CallID) Parser(raw string) error {
 		raw = util.TrimPrefixAndSuffix(raw, " ")
 	}
 	if len(strings.TrimSpace(raw)) > 0 {
-		c.CallId = raw
+		c.callId = raw
 	}
 	return nil
 }
 func (c *CallID) Validator() error {
 	if c == nil {
-		return errors.New("callid caller is not allowed to be nil")
+		return errors.New("callID caller is not allowed to be nil")
 	}
-	if len(strings.TrimSpace(c.Field)) == 0 {
+	if len(strings.TrimSpace(c.field)) == 0 {
 		return errors.New("field is not allowed to be empty")
 	}
-	if !regexp.MustCompile(`(?i)(call-id)`).Match([]byte(c.Field)) {
+	if !regexp.MustCompile(`(?i)(call-id)`).Match([]byte(c.field)) {
 		return errors.New("field is not match")
 	}
 	if c.Host != nil {

@@ -1,10 +1,8 @@
 package header
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"regexp"
 	"sip"
 	"sip/util"
@@ -27,64 +25,88 @@ import (
 // Example:
 
 // 	CSeq: 4711 INVITE
+
 type CSeq struct {
-	Field    string `json:"field"`
-	Sequence uint64 `json:"sequence"`
-	Method   string `json:"method"`
+	field    string
+	sequence uint64
+	method   string
 }
 
-func CreateCSeq() sip.Sip {
-	return &CSeq{}
+func (cseq *CSeq) Field() string {
+	return cseq.field
 }
 
-func NewCSeq(sequence uint64, method string) sip.Sip {
+func (cseq *CSeq) SetField(field string) {
+	cseq.field = field
+}
+
+func (cseq *CSeq) Sequence() uint64 {
+	return cseq.sequence
+}
+
+func (cseq *CSeq) SetSequence(sequence uint64) {
+	cseq.sequence = sequence
+}
+
+func (cseq *CSeq) Method() string {
+	return cseq.method
+}
+
+func (cseq *CSeq) SetMethod(method string) {
+	cseq.method = method
+}
+
+func NewCSeq(sequence uint64, method string) *CSeq {
 	return &CSeq{
-		Field:    "CSeq",
-		Sequence: sequence,
-		Method:   method,
+		field:    "CSeq",
+		sequence: sequence,
+		method:   method,
 	}
 }
-func (cseq *CSeq) Raw() string {
+func (cseq *CSeq) Raw() (string, error) {
 	result := ""
-	if reflect.DeepEqual(nil, cseq) {
-		return result
+	if err := cseq.Validator(); err != nil {
+		return result, err
 	}
-	result += fmt.Sprintf("%v:", cseq.Field)
-	result += fmt.Sprintf(" %v", cseq.Sequence)
-	if len(strings.TrimSpace(cseq.Method)) > 0 {
-		result += fmt.Sprintf(" %v", strings.ToUpper(cseq.Method))
+	if len(strings.TrimSpace(cseq.field)) == 0 {
+		cseq.field = "CSeq"
+	}
+	result += fmt.Sprintf("%s:", cseq.field)
+	result += fmt.Sprintf(" %d", cseq.sequence)
+	if len(strings.TrimSpace(cseq.method)) > 0 {
+		result += fmt.Sprintf(" %s", strings.ToUpper(cseq.method))
 	}
 	result += "\r\n"
-	return result
+	return result, nil
 }
-func (cseq *CSeq) JsonString() string {
+func (cseq *CSeq) String() string {
 	result := ""
-	if reflect.DeepEqual(nil, cseq) {
-		return result
+	if len(strings.TrimSpace(cseq.field)) > 0 {
+		result += fmt.Sprintf("field: %s,", cseq.field)
 	}
-	data, err := json.Marshal(cseq)
-	if err != nil {
-		return result
+	result += fmt.Sprintf("sequence: %d,", cseq.sequence)
+	if len(strings.TrimSpace(cseq.method)) > 0 {
+		result += fmt.Sprintf("method: %s,", cseq.method)
 	}
-	result += fmt.Sprintf("%s", data)
+	result = strings.TrimSuffix(result, ",")
 	return result
 }
 func (cseq *CSeq) Parser(raw string) error {
 	if cseq == nil {
 		return errors.New("cseq caller is not allowed to be nil")
 	}
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = util.TrimPrefixAndSuffix(raw, " ")
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
-	raw = util.TrimPrefixAndSuffix(raw, " ")
-	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
-	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
 
 	// filed regexp
 	fieldRegexp := regexp.MustCompile(`(?i)(cseq).*?:`)
 	if fieldRegexp.MatchString(raw) {
 		field := fieldRegexp.FindString(raw)
-		cseq.Field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
+		cseq.field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
 		raw = strings.ReplaceAll(raw, field, "")
 		raw = strings.TrimSuffix(raw, " ")
 		raw = strings.TrimPrefix(raw, " ")
@@ -97,7 +119,7 @@ func (cseq *CSeq) Parser(raw string) error {
 		if err != nil {
 			return err
 		}
-		cseq.Sequence = uint64(cq)
+		cseq.sequence = uint64(cq)
 	}
 	// methods regexp
 	methodsRegexpStr := `(?i)(`
@@ -108,7 +130,7 @@ func (cseq *CSeq) Parser(raw string) error {
 	methodsRegexpStr += ")"
 	methodsRegexp := regexp.MustCompile(methodsRegexpStr)
 	if methodsRegexp.MatchString(raw) {
-		cseq.Method = methodsRegexp.FindString(raw)
+		cseq.method = methodsRegexp.FindString(raw)
 	}
 
 	return nil
@@ -117,13 +139,13 @@ func (cseq *CSeq) Validator() error {
 	if cseq == nil {
 		return errors.New("cseq caller is not allowed to be nil")
 	}
-	if len(strings.TrimSpace(cseq.Field)) == 0 {
+	if len(strings.TrimSpace(cseq.field)) == 0 {
 		return errors.New("field is not allowed to be empty")
 	}
-	if !regexp.MustCompile(`(?i)(cseq)`).Match([]byte(cseq.Field)) {
+	if !regexp.MustCompile(`(?i)(cseq)`).Match([]byte(cseq.field)) {
 		return errors.New("field is not match")
 	}
-	if len(strings.TrimSpace(cseq.Method)) == 0 {
+	if len(strings.TrimSpace(cseq.method)) == 0 {
 		return errors.New("method is not allowed to be empty")
 	}
 	// methods regexp
@@ -134,7 +156,7 @@ func (cseq *CSeq) Validator() error {
 	methodsRegexpStr = strings.TrimSuffix(methodsRegexpStr, "|")
 	methodsRegexpStr += ")"
 	methodsRegexp := regexp.MustCompile(methodsRegexpStr)
-	if !methodsRegexp.MatchString(cseq.Method) {
+	if !methodsRegexp.MatchString(cseq.method) {
 		return errors.New("method is not match")
 	}
 	return nil

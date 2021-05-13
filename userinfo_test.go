@@ -1,7 +1,6 @@
 package sip
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"testing"
@@ -9,38 +8,54 @@ import (
 
 func TestNewUserInfo(t *testing.T) {
 	ui := NewUserInfo("34020000001320000001", "", "")
-	data, err := json.Marshal(ui)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("%s\r\n", data)
+	fmt.Printf("%s\r\n", ui)
 }
 
-func Test_UserInfo_Raw(t *testing.T) {
+func TestUserInfo_Parser(t *testing.T) {
+	raw := "+358-555-1234567"
+	ui := new(UserInfo)
+	if err := ui.Parser(raw); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(ui.String())
+}
+
+func TestUserInfo_Password(t *testing.T) {
+
+}
+
+func TestUserInfo_Raw(t *testing.T) {
 	ui := NewUserInfo("34020000001320000001", "", "")
 	fmt.Println(ui.Raw())
 }
 
-func Test_UserInfo_JsonString(t *testing.T) {
+func TestUserInfo_SetPassword(t *testing.T) {
+
+}
+
+func TestUserInfo_SetTelephoneSubscriber(t *testing.T) {
+
+}
+
+func TestUserInfo_SetUser(t *testing.T) {
+
+}
+
+func TestUserInfo_String(t *testing.T) {
 	ui := NewUserInfo("34020000001320000001", "", "")
-	if res := ui.JsonString(); res != "" {
-		fmt.Println(res)
-	}
+	fmt.Println(ui.String())
 }
 
-func Test_UserInfo_Parser(t *testing.T) {
-	raw := "+358-555-1234567"
-	ui := CreateUserInfo()
-	if err := ui.Parser(raw); err != nil {
-		log.Fatal(err)
-	}
-	if res := ui.JsonString(); res != "" {
-		fmt.Println(res)
-	}
+func TestUserInfo_TelephoneSubscriber(t *testing.T) {
+
 }
 
-func Test_UserInfo_Validator(t *testing.T) {
-	ui := NewUserInfo("", "", "")
+func TestUserInfo_User(t *testing.T) {
+
+}
+
+func TestUserInfo_Validator(t *testing.T) {
+	ui := NewUserInfo("123", "", "")
 	if err := ui.Validator(); err != nil {
 		log.Fatal(err)
 	}

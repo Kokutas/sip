@@ -1,10 +1,8 @@
 package header
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"regexp"
 	"sip"
 	"sip/util"
@@ -67,86 +65,183 @@ import (
 //大概的思想是  为了防止每次生成的MD5摘要值都相同，那就使用随机数nonce值，使用了随机数之后，md5的摘要值就会变化了， 但是为了性能考虑等原因， 我们希望nonce值是有有效期的，不要每次都使用不同的nonce值。在这个有效期内， MD5值又不变了，那么就又引入nc值， nc的值表示使用这个nonce的次数，要求每次加1. 所以就给重放攻击加大难度了。
 
 type WWWAuthenticate struct {
-	Field      string                 `json:"field"`
-	AuthSchema string                 `json:"auth-schema"` // basic / digest
-	Realm      string                 `json:"realm"`
-	Domain     *sip.SipUri            `json:"domain"`
-	Nonce      string                 `json:"nonce"`
-	Opaque     string                 `json:"opaque"`
-	Stale      string                 `json:"stale,string"`
-	Algorithm  string                 `json:"algorithm"`
-	QopOptions string                 `json:"qop-options"`
-	AuthParam  map[string]interface{} `json:"auth-param"`
+	field      string
+	authSchema string // basic / digest
+	realm      string
+	domain     *sip.SipUri
+	nonce      string
+	opaque     string
+	stale      string
+	algorithm  string
+	qopOptions string
+	authParam  map[string]interface{}
 }
 
-func CreateWWWAuthenticate() sip.Sip {
-	return &WWWAuthenticate{}
+func (wa *WWWAuthenticate) Field() string {
+	return wa.field
 }
-func NewWWWAuthenticate(authSchema string, realm string, domain *sip.SipUri, nonce string, opaque string, stale string, algorithm string, qopOptions string, authParam map[string]interface{}) sip.Sip {
-	return &WWWAuthenticate{
-		Field:      "WWW-Authenticate",
-		AuthSchema: authSchema,
-		Realm:      realm,
-		Domain:     domain,
-		Nonce:      nonce,
-		Opaque:     opaque,
-		Stale:      stale,
-		Algorithm:  algorithm,
-		QopOptions: qopOptions,
-		AuthParam:  authParam,
-	}
+
+func (wa *WWWAuthenticate) SetField(field string) {
+	wa.field = field
 }
-func (wa *WWWAuthenticate) Raw() string {
+
+func (wa *WWWAuthenticate) AuthSchema() string {
+	return wa.authSchema
+}
+
+func (wa *WWWAuthenticate) SetAuthSchema(authSchema string) {
+	wa.authSchema = authSchema
+}
+
+func (wa *WWWAuthenticate) Realm() string {
+	return wa.realm
+}
+
+func (wa *WWWAuthenticate) SetRealm(realm string) {
+	wa.realm = realm
+}
+
+func (wa *WWWAuthenticate) Domain() *sip.SipUri {
+	return wa.domain
+}
+
+func (wa *WWWAuthenticate) SetDomain(domain *sip.SipUri) {
+	wa.domain = domain
+}
+
+func (wa *WWWAuthenticate) Nonce() string {
+	return wa.nonce
+}
+
+func (wa *WWWAuthenticate) SetNonce(nonce string) {
+	wa.nonce = nonce
+}
+
+func (wa *WWWAuthenticate) Opaque() string {
+	return wa.opaque
+}
+
+func (wa *WWWAuthenticate) SetOpaque(opaque string) {
+	wa.opaque = opaque
+}
+
+func (wa *WWWAuthenticate) Stale() string {
+	return wa.stale
+}
+
+func (wa *WWWAuthenticate) SetStale(stale string) {
+	wa.stale = stale
+}
+
+func (wa *WWWAuthenticate) Algorithm() string {
+	return wa.algorithm
+}
+
+func (wa *WWWAuthenticate) SetAlgorithm(algorithm string) {
+	wa.algorithm = algorithm
+}
+
+func (wa *WWWAuthenticate) QopOptions() string {
+	return wa.qopOptions
+}
+
+func (wa *WWWAuthenticate) SetQopOptions(qopOptions string) {
+	wa.qopOptions = qopOptions
+}
+
+func (wa *WWWAuthenticate) AuthParam() map[string]interface{} {
+	return wa.authParam
+}
+
+func (wa *WWWAuthenticate) SetAuthParam(authParam map[string]interface{}) {
+	wa.authParam = authParam
+}
+
+func NewWWWAuthenticate(authSchema string, realm string, domain *sip.SipUri, nonce string, opaque string, stale string, algorithm string, qopOptions string, authParam map[string]interface{}) *WWWAuthenticate {
+	return &WWWAuthenticate{field: "WWW-Authenticate", authSchema: authSchema, realm: realm, domain: domain, nonce: nonce, opaque: opaque, stale: stale, algorithm: algorithm, qopOptions: qopOptions, authParam: authParam}
+}
+
+func (wa *WWWAuthenticate) Raw() (string, error) {
 	result := ""
-	if reflect.DeepEqual(nil, wa) {
-		return result
+	if err := wa.Validator(); err != nil {
+		return result, err
 	}
-	result += fmt.Sprintf("%v:", strings.Title(wa.Field))
-	if len(strings.TrimSpace(wa.AuthSchema)) == 0 {
-		wa.AuthSchema = "Digest"
+	if len(strings.TrimSpace(wa.field)) == 0 {
+		wa.field = "WWW-Authenticate"
 	}
-	result += fmt.Sprintf(" %v ", strings.Title(wa.AuthSchema))
+	result += fmt.Sprintf("%s:", wa.field)
+	if len(strings.TrimSpace(wa.authSchema)) == 0 {
+		wa.authSchema = "Digest"
+	}
+	result += fmt.Sprintf(" %s", strings.Title(wa.authSchema))
 
-	if len(strings.TrimSpace(wa.Realm)) > 0 {
-		result += fmt.Sprintf("realm=\"%v\",", wa.Realm)
+	if len(strings.TrimSpace(wa.realm)) > 0 {
+		result += fmt.Sprintf(" realm=\"%v\",", wa.realm)
 	}
 
-	if wa.Domain != nil {
-		result += fmt.Sprintf("domain=\"%v\",", wa.Domain.Raw())
+	if wa.domain != nil {
+		res, err := wa.domain.Raw()
+		if err != nil {
+			return "", err
+		}
+		result += fmt.Sprintf("domain=\"%v\",", res)
 	}
-	if len(strings.TrimSpace(wa.Nonce)) > 0 {
-		result += fmt.Sprintf("nonce=\"%v\",", wa.Nonce)
+	if len(strings.TrimSpace(wa.nonce)) > 0 {
+		result += fmt.Sprintf("nonce=\"%v\",", wa.nonce)
 	}
-	if len(strings.TrimSpace(wa.Opaque)) > 0 {
-		result += fmt.Sprintf("opaque=\"%v\",", wa.Opaque)
+	if len(strings.TrimSpace(wa.opaque)) > 0 {
+		result += fmt.Sprintf("opaque=\"%v\",", wa.opaque)
 	}
-	if regexp.MustCompile(`(?i)(true|false)`).MatchString(wa.Stale) {
-		result += fmt.Sprintf("stale=%v,", strings.ToUpper(wa.Stale))
+	if regexp.MustCompile(`(?i)(true|false)`).MatchString(wa.stale) {
+		result += fmt.Sprintf("stale=%v,", strings.ToUpper(wa.stale))
 	}
-	if len(strings.TrimSpace(wa.QopOptions)) > 0 {
-		result += fmt.Sprintf("qop=\"%v\",", wa.QopOptions)
+	if len(strings.TrimSpace(wa.qopOptions)) > 0 {
+		result += fmt.Sprintf("qop=\"%v\",", wa.qopOptions)
 	}
-	if wa.AuthParam != nil {
-		for k, v := range wa.AuthParam {
+	if wa.authParam != nil {
+		for k, v := range wa.authParam {
 			result += fmt.Sprintf("%v=\"%v\",", k, v)
 		}
 	}
-	if len(strings.TrimSpace(wa.Algorithm)) > 0 {
-		result += fmt.Sprintf("algorithm=%v", strings.ToUpper(wa.Algorithm))
+	if len(strings.TrimSpace(wa.algorithm)) > 0 {
+		result += fmt.Sprintf("algorithm=%v", strings.ToUpper(wa.algorithm))
 	}
 	result += "\r\n"
-	return result
+	return result, nil
 }
-func (wa *WWWAuthenticate) JsonString() string {
+func (wa *WWWAuthenticate) String() string {
 	result := ""
-	if reflect.DeepEqual(nil, wa) {
-		return result
+	if len(strings.TrimSpace(wa.field)) > 0 {
+		result += fmt.Sprintf("field: %s,", wa.field)
 	}
-	data, err := json.Marshal(wa)
-	if err != nil {
-		return result
+	if len(strings.TrimSpace(wa.authSchema)) > 0 {
+		result += fmt.Sprintf("auth-schema: %v,", wa.authSchema)
 	}
-	result = fmt.Sprintf("%s", data)
+	if len(strings.TrimSpace(wa.realm)) > 0 {
+		result += fmt.Sprintf("realm: %v,", wa.realm)
+	}
+	if wa.domain != nil {
+		result += fmt.Sprintf("%s", wa.domain.String())
+	}
+	if len(strings.TrimSpace(wa.nonce)) > 0 {
+		result += fmt.Sprintf("nonce: %s,", wa.nonce)
+	}
+	if len(strings.TrimSpace(wa.opaque)) > 0 {
+		result += fmt.Sprintf("opaque: %v,", wa.opaque)
+	}
+	if regexp.MustCompile(`(?i)(true|false)`).MatchString(wa.stale) {
+		result += fmt.Sprintf("stale: %v,", strings.ToUpper(wa.stale))
+	}
+	if len(strings.TrimSpace(wa.qopOptions)) > 0 {
+		result += fmt.Sprintf("qop: %v,", wa.qopOptions)
+	}
+	if wa.authParam != nil {
+		result += fmt.Sprintf("auth-param: %v,", wa.authParam)
+	}
+	if len(strings.TrimSpace(wa.algorithm)) > 0 {
+		result += fmt.Sprintf("algorithm:%v,", wa.algorithm)
+	}
+	result = strings.TrimSuffix(result, ",")
 	return result
 }
 func (wa *WWWAuthenticate) Parser(raw string) error {
@@ -164,7 +259,7 @@ func (wa *WWWAuthenticate) Parser(raw string) error {
 	fieldRegexp := regexp.MustCompile(`(?i)(www-authenticate).*?:`)
 	if fieldRegexp.MatchString(raw) {
 		field := fieldRegexp.FindString(raw)
-		wa.Field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
+		wa.field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
 		raw = strings.ReplaceAll(raw, field, "")
 		raw = strings.TrimSuffix(raw, " ")
 		raw = strings.TrimPrefix(raw, " ")
@@ -173,7 +268,7 @@ func (wa *WWWAuthenticate) Parser(raw string) error {
 	// auth schema regexp
 	authSchemaRegexp := regexp.MustCompile(`(?i)(digest|basic)`)
 	if authSchemaRegexp.MatchString(raw) {
-		wa.AuthSchema = authSchemaRegexp.FindString(raw)
+		wa.authSchema = authSchemaRegexp.FindString(raw)
 		raw = authSchemaRegexp.ReplaceAllString(raw, "")
 		raw = strings.TrimSuffix(raw, " ")
 		raw = strings.TrimPrefix(raw, " ")
@@ -204,41 +299,41 @@ func (wa *WWWAuthenticate) Parser(raw string) error {
 			realms := realmRegexp.FindString(raws)
 			realms = regexp.MustCompile(`(?i)(realm).*?=`).ReplaceAllString(realms, "")
 			realms = regexp.MustCompile(`"`).ReplaceAllString(realms, "")
-			wa.Realm = util.TrimPrefixAndSuffix(realms, " ")
+			wa.realm = util.TrimPrefixAndSuffix(realms, " ")
 		case domainRegexp.MatchString(raws):
 			domains := domainRegexp.FindString(raws)
 			domains = regexp.MustCompile(`(?i)(domain).*?=`).ReplaceAllString(domains, "")
 			domains = regexp.MustCompile(`"`).ReplaceAllString(domains, "")
 			domains = util.TrimPrefixAndSuffix(domains, " ")
-			wa.Domain = sip.CreateSipUri().(*sip.SipUri)
-			if err := wa.Domain.Parser(domains); err != nil {
+			wa.domain = new(sip.SipUri)
+			if err := wa.domain.Parser(domains); err != nil {
 				return err
 			}
 		case nonceRegexp.MatchString(raws):
 			nonces := nonceRegexp.FindString(raws)
 			nonces = regexp.MustCompile(`(?i)(nonce).*?=`).ReplaceAllString(nonces, "")
 			nonces = regexp.MustCompile(`"`).ReplaceAllString(nonces, "")
-			wa.Nonce = util.TrimPrefixAndSuffix(nonces, " ")
+			wa.nonce = util.TrimPrefixAndSuffix(nonces, " ")
 		case opaqueRegexp.MatchString(raws):
 			opaques := opaqueRegexp.FindString(raws)
 			opaques = regexp.MustCompile(`(?i)(opaque).*?=`).ReplaceAllString(opaques, "")
 			opaques = regexp.MustCompile(`"`).ReplaceAllString(opaques, "")
-			wa.Opaque = util.TrimPrefixAndSuffix(opaques, " ")
+			wa.opaque = util.TrimPrefixAndSuffix(opaques, " ")
 		case staleRegexp.MatchString(raws):
 			stales := staleRegexp.FindString(raws)
 			stales = regexp.MustCompile(`(?i)(stale).*?=`).ReplaceAllString(stales, "")
 			stales = regexp.MustCompile(`"`).ReplaceAllString(stales, "")
-			wa.Stale = util.TrimPrefixAndSuffix(stales, " ")
+			wa.stale = util.TrimPrefixAndSuffix(stales, " ")
 		case algorithmRegexp.MatchString(raws):
 			algorithms := algorithmRegexp.FindString(raws)
 			algorithms = regexp.MustCompile(`(?i)(algorithm).*?=`).ReplaceAllString(algorithms, "")
 			algorithms = regexp.MustCompile(`"`).ReplaceAllString(algorithms, "")
-			wa.Algorithm = util.TrimPrefixAndSuffix(algorithms, " ")
+			wa.algorithm = util.TrimPrefixAndSuffix(algorithms, " ")
 		case qopOptionsRegexp.MatchString(raws):
 			qopOptions := qopOptionsRegexp.FindString(raws)
 			qopOptions = regexp.MustCompile(`(?i)(qop).*?=`).ReplaceAllString(qopOptions, "")
 			qopOptions = regexp.MustCompile(`"`).ReplaceAllString(qopOptions, "")
-			wa.QopOptions = util.TrimPrefixAndSuffix(qopOptions, " ")
+			wa.qopOptions = util.TrimPrefixAndSuffix(qopOptions, " ")
 		default:
 			// auth-param
 			if strings.Contains(raws, "=") {
@@ -248,10 +343,10 @@ func (wa *WWWAuthenticate) Parser(raw string) error {
 				}
 			}
 		}
-		wa.AuthParam = authParams
+		wa.authParam = authParams
 	}
-	if len(strings.TrimSpace(wa.Algorithm)) == 0 {
-		wa.Algorithm = "MD5"
+	if len(strings.TrimSpace(wa.algorithm)) == 0 {
+		wa.algorithm = "MD5"
 	}
 	return nil
 }
@@ -259,14 +354,14 @@ func (wa *WWWAuthenticate) Validator() error {
 	if wa == nil {
 		return errors.New("www-authenticate caller is not allowed to be nil")
 	}
-	if len(strings.TrimSpace(wa.Field)) == 0 {
+	if len(strings.TrimSpace(wa.field)) == 0 {
 		return errors.New("field is not allowed to be empty")
 	}
-	if !regexp.MustCompile(`(?i)(www-authenticate)`).Match([]byte(wa.Field)) {
+	if !regexp.MustCompile(`(?i)(www-authenticate)`).Match([]byte(wa.field)) {
 		return errors.New("field is not match")
 	}
-	if wa.Domain != nil {
-		if err := wa.Domain.Validator(); err != nil {
+	if wa.domain != nil {
+		if err := wa.domain.Validator(); err != nil {
 			return err
 		}
 	}

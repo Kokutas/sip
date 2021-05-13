@@ -1,10 +1,8 @@
 package header
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"regexp"
 	"sip"
 	"sip/util"
@@ -70,92 +68,151 @@ import (
 // ttl = 1*3DIGIT ; 0 to 255
 
 type Via struct {
-	Field           string `json:"field"`
-	*sip.SipVersion `json:"sent-protocol"`
-	Transport       string `json:"transport"`
-	*sip.HostPort   `json:"sent-by"`
-	Rport           uint16 `json:"response-port"`
-	*sip.Parameters `json:"via-params"`
-	Branch          string `json:"via-branch"`
-	Received        string `json:"via-received"`
+	field           string
+	*sip.SipVersion
+	transport       string
+	*sip.HostPort
+	rport           uint16
+	*sip.Parameters
+	branch          string
+	received        string
 }
 
-func CreateVia() sip.Sip {
-	return &Via{}
+func (via *Via) Field() string {
+	return via.field
 }
-func NewVia(sipVersion *sip.SipVersion, transport string, hostPort *sip.HostPort, rport uint16, parameters *sip.Parameters, branch string, received string) sip.Sip {
+
+func (via *Via) SetField(field string) {
+	via.field = field
+}
+
+func (via *Via) Rport() uint16 {
+	return via.rport
+}
+
+func (via *Via) SetRport(rport uint16) {
+	via.rport = rport
+}
+
+func (via *Via) Branch() string {
+	return via.branch
+}
+
+func (via *Via) SetBranch(branch string) {
+	via.branch = branch
+}
+
+func (via *Via) Received() string {
+	return via.received
+}
+
+func (via *Via) SetReceived(received string) {
+	via.received = received
+}
+
+
+func NewVia(sipVersion *sip.SipVersion, transport string, hostPort *sip.HostPort, rport uint16, parameters *sip.Parameters, branch string, received string) *Via {
 	return &Via{
-		Field:      "Via",
+		field:      "Via",
 		SipVersion: sipVersion,
-		Transport:  transport,
+		transport:  transport,
 		HostPort:   hostPort,
-		Rport:      rport,
+		rport:      rport,
 		Parameters: parameters,
-		Branch:     branch,
-		Received:   received,
+		branch:     branch,
+		received:   received,
 	}
 }
-func (via *Via) Raw() string {
+func (via *Via) Raw() (string,error) {
 	result := ""
-	if reflect.DeepEqual(nil, via) {
-		return result
+	if err:=via.Validator();err!=nil {
+		return result,err
 	}
-	result += fmt.Sprintf("%v:", via.Field)
+	if len(strings.TrimSpace(via.field))==0{
+		via.field="Via"
+	}
+	result += fmt.Sprintf("%s:", strings.Title(via.field))
 	if via.SipVersion != nil {
-		result += fmt.Sprintf(" %v", via.SipVersion.Raw())
+		res,err:=via.SipVersion.Raw()
+		if err!=nil{
+			return "",err
+		}
+		result += fmt.Sprintf(" %s", res)
 	}
-	if len(strings.TrimSpace(via.Transport)) > 0 {
-		result += fmt.Sprintf("/%v", via.Transport)
+	if len(strings.TrimSpace(via.transport)) > 0 {
+		result += fmt.Sprintf("/%s", strings.ToUpper(via.transport))
 	}
 	if via.HostPort != nil {
-		result += fmt.Sprintf(" %v", via.HostPort.Raw())
+		res,err:=via.HostPort.Raw()
+		if err!=nil{
+			return "",err
+		}
+		result += fmt.Sprintf(" %s", res)
 	}
-	if via.Rport == 1 {
+	if via.rport == 1 {
 		result += fmt.Sprintf(";%v", "rport")
 	}
-	if via.Rport > 1 {
-		result += fmt.Sprintf(";rport=%v", via.Rport)
+	if via.rport > 1 {
+		result += fmt.Sprintf(";rport=%v", via.rport)
 	}
 	if via.Parameters != nil {
-		result += fmt.Sprintf("%v", via.Parameters.Raw())
+		res,err:=via.Parameters.Raw()
+		if err!=nil{
+			return "", err
+		}
+		result += fmt.Sprintf("%s", res)
 	}
-	if len(strings.TrimSpace(via.Branch)) > 0 {
-		result += fmt.Sprintf(";branch=%v", via.Branch)
+	if len(strings.TrimSpace(via.branch)) > 0 {
+		result += fmt.Sprintf(";branch=%v", via.branch)
 	}
-	if len(strings.TrimSpace(via.Received)) > 0 {
-		result += fmt.Sprintf(";received=%v", via.Received)
+	if len(strings.TrimSpace(via.received)) > 0 {
+		result += fmt.Sprintf(";received=%v", via.received)
 	}
 	result += "\r\n"
-	return result
+	return result,nil
 }
-func (via *Via) JsonString() string {
+func (via *Via) String() string {
 	result := ""
-	if reflect.DeepEqual(nil, via) {
-		return result
+	if len(strings.TrimSpace(via.field))>0{
+		result +=fmt.Sprintf("field: %s,",via.field)
 	}
-	data, err := json.Marshal(via)
-	if err != nil {
-		return result
+	if via.SipVersion!=nil{
+		result+=fmt.Sprintf("%s,",via.SipVersion.String())
 	}
-	result = fmt.Sprintf("%s", data)
+	if len(strings.TrimSpace(via.transport))>0{
+		result +=fmt.Sprintf("transport: %s,",via.transport)
+	}
+	if via.HostPort!=nil{
+		result+=fmt.Sprintf("%s,",via.HostPort.String())
+	}
+	result +=fmt.Sprintf("rport: %d,",via.rport)
+	if via.Parameters!=nil{
+		result+=fmt.Sprintf("%s,",via.Parameters.String())
+	}
+	if len(strings.TrimSpace(via.branch))>0{
+		result +=fmt.Sprintf("via-branch: %s,",via.branch)
+	}
+	if len(strings.TrimSpace(via.received))>0{
+		result +=fmt.Sprintf("via-received: %s,",via.received)
+	}
+	result = strings.TrimSuffix(result,",")
 	return result
 }
 func (via *Via) Parser(raw string) error {
 	if via == nil {
 		return errors.New("via caller is not allowed via be nil")
 	}
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = util.TrimPrefixAndSuffix(raw, " ")
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
-	raw = util.TrimPrefixAndSuffix(raw, " ")
-	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
-	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
-
 	// filed regexp
 	fieldRegexp := regexp.MustCompile(`(?i)(via).*?:`)
 	if fieldRegexp.MatchString(raw) {
 		field := fieldRegexp.FindString(raw)
-		via.Field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
+		via.field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
 		raw = strings.ReplaceAll(raw, field, "")
 		raw = strings.TrimSuffix(raw, " ")
 		raw = strings.TrimPrefix(raw, " ")
@@ -171,7 +228,7 @@ func (via *Via) Parser(raw string) error {
 	sipVersionRegexp := regexp.MustCompile(schemasRegexpStr + `/\d+\.\d*`)
 	if sipVersionRegexp.MatchString(raw) {
 		sipVersion := sipVersionRegexp.FindString(raw)
-		via.SipVersion = sip.CreateSipVersion().(*sip.SipVersion)
+		via.SipVersion = new(sip.SipVersion)
 		if err := via.SipVersion.Parser(sipVersion); err != nil {
 			return err
 		}
@@ -187,7 +244,7 @@ func (via *Via) Parser(raw string) error {
 	transportsRegexpStr += ")"
 	transportRegexp := regexp.MustCompile(`/` + transportsRegexpStr)
 	if transportRegexp.MatchString(raw) {
-		via.Transport = regexp.MustCompile(`/`).ReplaceAllString(transportRegexp.FindString(raw), "")
+		via.transport = regexp.MustCompile(`/`).ReplaceAllString(transportRegexp.FindString(raw), "")
 		raw = transportRegexp.ReplaceAllString(raw, "")
 		raw = util.TrimPrefixAndSuffix(raw, " ")
 	}
@@ -220,7 +277,7 @@ func (via *Via) Parser(raw string) error {
 			raw = util.TrimPrefixAndSuffix(raw, " ")
 			raw = strings.TrimLeft(raw, hostport)
 			raw = util.TrimPrefixAndSuffix(raw, " ")
-			via.HostPort = sip.CreateHostPort().(*sip.HostPort)
+			via.HostPort = new(sip.HostPort)
 			if err := via.HostPort.Parser(hostport); err != nil {
 				return err
 			}
@@ -237,9 +294,9 @@ func (via *Via) Parser(raw string) error {
 				if err != nil {
 					return err
 				}
-				via.Rport = uint16(rport)
+				via.rport = uint16(rport)
 			} else {
-				via.Rport = 1
+				via.rport = 1
 			}
 		case branchRegexp.MatchString(raws):
 			raw = regexp.MustCompile(branchRegexp.FindString(raws)).ReplaceAllString(raw, "")
@@ -248,7 +305,7 @@ func (via *Via) Parser(raw string) error {
 			branchs := regexp.MustCompile(`(?i)(branch)`).ReplaceAllString(branchRegexp.FindString(raws), "")
 			branchs = regexp.MustCompile(`=`).ReplaceAllString(branchs, "")
 			branchs = util.TrimPrefixAndSuffix(branchs, " ")
-			via.Branch = branchs
+			via.branch = branchs
 		case receivedRegexp.MatchString(raws):
 			raw = regexp.MustCompile(receivedRegexp.FindString(raws)).ReplaceAllString(raw, "")
 			raw = util.TrimPrefixAndSuffix(raw, ";")
@@ -256,14 +313,14 @@ func (via *Via) Parser(raw string) error {
 			received := regexp.MustCompile(`(?i)(received)`).ReplaceAllString(receivedRegexp.FindString(raws), "")
 			received = regexp.MustCompile(`=`).ReplaceAllString(received, "")
 			received = util.TrimPrefixAndSuffix(received, " ")
-			via.Received = received
+			via.received = received
 		}
 	}
 	raw = util.TrimPrefixAndSuffix(raw, ";")
 	raw = util.TrimPrefixAndSuffix(raw, " ")
 	// parameters regexp
 	if len(strings.TrimSpace(raw)) > 0 {
-		via.Parameters = sip.CreateParameters().(*sip.Parameters)
+		via.Parameters = new(sip.Parameters)
 		if err := via.Parameters.Parser(raw); err != nil {
 			return err
 		}
@@ -275,16 +332,16 @@ func (via *Via) Validator() error {
 	if via == nil {
 		return errors.New("via caller is not allowed to be nil")
 	}
-	if len(strings.TrimSpace(via.Field)) == 0 {
+	if len(strings.TrimSpace(via.field)) == 0 {
 		return errors.New("field is not allowed to be empty")
 	}
-	if !regexp.MustCompile(`(?i)(via)`).Match([]byte(via.Field)) {
+	if !regexp.MustCompile(`(?i)(via)`).Match([]byte(via.field)) {
 		return errors.New("field is not match")
 	}
 	if err := via.SipVersion.Validator(); err != nil {
 		return err
 	}
-	if len(strings.TrimSpace(via.Transport)) == 0 {
+	if len(strings.TrimSpace(via.transport)) == 0 {
 		return errors.New("transport is not allowed to be empty")
 	}
 	// transport regexp
@@ -295,13 +352,13 @@ func (via *Via) Validator() error {
 	transportsRegexpStr = strings.TrimSuffix(transportsRegexpStr, "|")
 	transportsRegexpStr += ")"
 	transportRegexp := regexp.MustCompile(transportsRegexpStr)
-	if !transportRegexp.MatchString(via.Transport) {
+	if !transportRegexp.MatchString(via.transport) {
 		return errors.New("transport is not match")
 	}
 	if err := via.HostPort.Validator(); err != nil {
 		return err
 	}
-	if len(strings.TrimSpace(via.Branch)) == 0 {
+	if len(strings.TrimSpace(via.branch)) == 0 {
 		return errors.New("branch is not allowed to be empty")
 	}
 	return nil

@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="af13ce96-28a6-40ad-b179-b814ea863a90" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/sip.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/absolute-uri.go" beforeDir="false" afterPath="$PROJECT_DIR$/absolute-uri.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/authorization.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/authorization.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/authorization_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/authorization_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/call-id.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/call-id.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/call-id_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/call-id_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/contact.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/contact.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/contact_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/contact_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/content-length.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/content-length.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/content-length_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/content-length_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/cseq.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/cseq.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/cseq_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/cseq_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/date.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/date.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/date_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/date_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/expires.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/expires.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/expires_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/expires_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/from.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/from.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/from_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/from_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/max-forwards.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/max-forwards.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/max-forwards_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/max-forwards_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/to.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/to.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/to_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/to_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/user-agent.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/user-agent.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/user-agent_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/user-agent_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/via.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/via.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/via_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/via_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/www-authenticate.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/www-authenticate.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header/www-authenticate_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/www-authenticate_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/host.go" beforeDir="false" afterPath="$PROJECT_DIR$/host.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/host_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/host_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hostport.go" beforeDir="false" afterPath="$PROJECT_DIR$/hostport.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hostport_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/hostport_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/line/request-line.go" beforeDir="false" afterPath="$PROJECT_DIR$/line/request-line.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/line/request-line_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/line/request-line_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/line/status-line.go" beforeDir="false" afterPath="$PROJECT_DIR$/line/status-line.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/line/status-line_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/line/status-line_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/parameters.go" beforeDir="false" afterPath="$PROJECT_DIR$/parameters.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/parameters_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/parameters_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/request-uri.go" beforeDir="false" afterPath="$PROJECT_DIR$/request-uri.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sip-version.go" beforeDir="false" afterPath="$PROJECT_DIR$/sip-version.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sip.go" beforeDir="false" afterPath="$PROJECT_DIR$/sip-layer.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/test/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/uri.go" beforeDir="false" afterPath="$PROJECT_DIR$/uri.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/uri_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/uri_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/userinfo.go" beforeDir="false" afterPath="$PROJECT_DIR$/userinfo.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/userinfo_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/userinfo_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/util/string.go" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Go File" />
+      </list>
+    </option>
+  </component>
+  <component name="GOROOT" url="file:///usr/local/go" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GoLibraries">
+    <option name="indexEntireGoPath" value="false" />
+  </component>
+  <component name="ProjectId" id="1sSg15bfnLv0TWtIZ7rigwaDHaz" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="DefaultGoTemplateProperty" value="Go File" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="configurable..is.expanded" value="false" />
+    <property name="configurable.GoLibrariesConfigurable.is.expanded" value="true" />
+    <property name="go.import.settings.migrated" value="true" />
+    <property name="go.sdk.automatically.set" value="true" />
+    <property name="go.tried.to.enable.integration.vgo.integrator" value="true" />
+    <property name="last_opened_file_path" value="$USER_HOME$" />
+    <property name="settings.editor.selected.configurable" value="preferences.keymap" />
+  </component>
+  <component name="RunManager" selected="Go Test.go test sip/header">
+    <configuration name="TestAuthorization_Parser in sip/header" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="sip" />
+      <working_directory value="$PROJECT_DIR$/header" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="sip/header" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestAuthorization_Parser\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestAuthorization_Raw in sip/header" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="sip" />
+      <working_directory value="$PROJECT_DIR$/header" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="sip/header" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestAuthorization_Raw\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestAuthorization_String in sip/header" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="sip" />
+      <working_directory value="$PROJECT_DIR$/header" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="sip/header" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestAuthorization_String\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestDate_Raw in sip/header" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="sip" />
+      <working_directory value="$PROJECT_DIR$/header" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="sip/header" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestDate_Raw\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="go test sip/header" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="sip" />
+      <working_directory value="$PROJECT_DIR$/header" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="sip/header" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Go Test.go test sip/header" />
+        <item itemvalue="Go Test.TestAuthorization_String in sip/header" />
+        <item itemvalue="Go Test.TestDate_Raw in sip/header" />
+        <item itemvalue="Go Test.TestAuthorization_Parser in sip/header" />
+        <item itemvalue="Go Test.TestAuthorization_Raw in sip/header" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="oldMeFiltersMigrated" value="true" />
+  </component>
+  <component name="VgoProject">
+    <integration-enabled>true</integration-enabled>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/sip$TestStatusLine_Raw_in_sip_line.out" NAME="TestStatusLine_Raw in sip/line Coverage Results" MODIFIED="1620882715491" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="GoCoverage" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" />
+  </component>
+</project>

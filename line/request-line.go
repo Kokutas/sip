@@ -1,7 +1,6 @@
 package line
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -31,63 +30,74 @@ import (
 //                   / ";" / ":" / "@" / "&" / "=" / "+" )
 // query          =  *uric
 // SIP-Version    =  "SIP" "/" 1*DIGIT "." 1*DIGIT
+
 type RequestLine struct {
-	Method          string `json:"method"`
-	*sip.RequestUri `json:"request-uri"`
-	*sip.SipVersion `json:"sip-version"`
+	method string
+	*sip.RequestUri
+	*sip.SipVersion
 }
 
-func CreateRequestLine() sip.Sip {
-	return &RequestLine{}
+func (rl *RequestLine) Method() string {
+	return rl.method
 }
-func NewRequestLine(method string, uri *sip.RequestUri, version *sip.SipVersion) sip.Sip {
-	return &RequestLine{
-		Method:     method,
-		RequestUri: uri,
-		SipVersion: version,
-	}
+func (rl *RequestLine) SetMethod(method string) {
+	rl.method = method
 }
-func (rl *RequestLine) Raw() string {
+func NewRequestLine(method string, requestUri *sip.RequestUri, sipVersion *sip.SipVersion) *RequestLine {
+	return &RequestLine{method: method, RequestUri: requestUri, SipVersion: sipVersion}
+}
+func (rl *RequestLine) Raw() (string, error) {
 	result := ""
-	if len(strings.TrimSpace(rl.Method)) > 0 {
-		result += fmt.Sprintf("%v", strings.ToUpper(rl.Method))
+	if err := rl.Validator(); err != nil {
+		return result, err
+	}
+	if len(strings.TrimSpace(rl.method)) > 0 {
+		result += fmt.Sprintf("%v", strings.ToUpper(rl.method))
 	}
 	if rl.RequestUri != nil {
-		result += fmt.Sprintf(" %v", rl.RequestUri.Raw())
+		res, err := rl.RequestUri.Raw()
+		if err != nil {
+			return "", err
+		}
+		result += fmt.Sprintf(" %s", res)
 	}
 	if rl.SipVersion != nil {
-		result += fmt.Sprintf(" %v", rl.SipVersion.Raw())
+		res, err := rl.SipVersion.Raw()
+		if err != nil {
+			return "", err
+		}
+		result += fmt.Sprintf(" %s", res)
 	}
 	result += "\r\n"
-	return result
+	return result, nil
 }
-func (rl *RequestLine) JsonString() string {
-	result := ""
-	if rl == nil {
-		return result
+func (rl *RequestLine) String() string {
+	result:=""
+	if len(strings.TrimSpace(rl.method))>0{
+		result+=fmt.Sprintf("method: %s,", rl.method)
 	}
-	if data, err := json.Marshal(rl); err != nil {
-		return result
-	} else {
-		result = fmt.Sprintf("%s", data)
+	if rl.RequestUri!=nil{
+		result+=fmt.Sprintf("%s,",rl.RequestUri.String())
 	}
+	if rl.SipVersion!=nil{
+		result+=fmt.Sprintf("%s,",rl.SipVersion.String())
+	}
+	result =strings.TrimSuffix(result,",")
 	return result
 }
 func (rl *RequestLine) Parser(raw string) error {
 	if rl == nil {
 		return errors.New("requestLine caller is not allowed to be nil")
 	}
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = strings.TrimLeft(raw, " ")
+	raw = strings.TrimRight(raw," ")
+	raw = strings.TrimPrefix(raw," ")
+	raw = strings.TrimSuffix(raw," ")
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
-	raw = strings.TrimPrefix(raw, " ")
-	raw = strings.TrimSuffix(raw, " ")
-	raw = strings.TrimSuffix(raw, "\r")
-	raw = strings.TrimSuffix(raw, "\n")
-	raw = strings.TrimPrefix(raw, "\r")
-	raw = strings.TrimPrefix(raw, "\n")
-	raw = strings.TrimSuffix(raw, " ")
-	raw = strings.TrimPrefix(raw, " ")
 	// methods regexp
 	methodsRegexpStr := `(?i)(`
 	for _, v := range sip.Methods {
@@ -97,10 +107,12 @@ func (rl *RequestLine) Parser(raw string) error {
 	methodsRegexpStr += ")"
 	methodsRegexp := regexp.MustCompile(methodsRegexpStr)
 	if methodsRegexp.MatchString(raw) {
-		rl.Method = methodsRegexp.FindString(raw)
+		rl.method = methodsRegexp.FindString(raw)
 		raw = methodsRegexp.ReplaceAllString(raw, "")
-		raw = strings.TrimSuffix(raw, " ")
-		raw = strings.TrimPrefix(raw, " ")
+		raw = strings.TrimLeft(raw, " ")
+		raw = strings.TrimRight(raw," ")
+		raw = strings.TrimPrefix(raw," ")
+		raw = strings.TrimSuffix(raw," ")
 	}
 	// sip-schema regexp
 	sipSchemaRegexpStr := `(?i)(`
@@ -113,29 +125,33 @@ func (rl *RequestLine) Parser(raw string) error {
 	if sipVersionRegexp.MatchString(raw) {
 		version := sipVersionRegexp.FindString(raw)
 		raw = sipVersionRegexp.ReplaceAllString(raw, "")
-		raw = strings.TrimSuffix(raw, " ")
-		raw = strings.TrimPrefix(raw, " ")
-		rl.SipVersion = sip.CreateSipVersion().(*sip.SipVersion)
+		raw = strings.TrimLeft(raw, " ")
+		raw = strings.TrimRight(raw," ")
+		raw = strings.TrimPrefix(raw," ")
+		raw = strings.TrimSuffix(raw," ")
+		rl.SipVersion = new(sip.SipVersion)
 		if err := rl.SipVersion.Parser(version); err != nil {
 			return err
 		}
 	}
-	rl.RequestUri = sip.CreateRequestUri().(*sip.RequestUri)
+	rl.RequestUri = new(sip.RequestUri)
 	return rl.RequestUri.Parser(raw)
 }
 func (rl *RequestLine) Validator() error {
 	if rl == nil {
-		return errors.New("RequestLine caller is not allowed to be nil")
+		return errors.New("requestLine caller is not allowed to be nil")
 	}
-	if len(strings.TrimSpace(rl.Method)) == 0 {
+	if len(strings.TrimSpace(rl.method)) == 0 {
 		return errors.New("method is not allowed to be empty")
 	}
-	if _, ok := sip.Methods[strings.ToUpper(rl.Method)]; !ok {
+	if _, ok := sip.Methods[strings.ToUpper(rl.method)]; !ok {
 		return errors.New("method is not support")
 	}
 	if err := rl.SipUri.Validator(); err != nil {
 		return err
 	}
-
+	if err := rl.SipUri.Validator(); err != nil {
+		return err
+	}
 	return rl.SipVersion.Validator()
 }

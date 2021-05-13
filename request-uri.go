@@ -2,6 +2,7 @@ package sip
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -11,43 +12,51 @@ type RequestUri struct {
 	*AbsoluteUri // absoluteURI
 }
 
-func CreateRequestUri() Sip {
-	return &RequestUri{}
+func NewRequestUri(sipUri *SipUri, absoluteUri *AbsoluteUri) *RequestUri {
+	return &RequestUri{SipUri: sipUri, AbsoluteUri: absoluteUri}
 }
-
-func NewRequestUri(uri *SipUri, absolute *AbsoluteUri) Sip {
-	return &RequestUri{uri, absolute}
-}
-
-func (ru *RequestUri) Raw() string {
+func (ru *RequestUri) Raw() (string, error) {
 	result := ""
-	if ru == nil {
-		return result
+	if err := ru.Validator(); err != nil {
+		return result, err
 	}
 	switch {
 	case ru.SipUri != nil:
-		result += ru.SipUri.Raw()
+		res, err := ru.SipUri.Raw()
+		if err != nil {
+			return "", err
+		}
+		result += res
 	case ru.AbsoluteUri != nil:
-		result += ru.AbsoluteUri.Raw()
+		res, err := ru.AbsoluteUri.Raw()
+		if err != nil {
+			return "", err
+		}
+		result += res
 	}
-	return result
+	return result, nil
 }
-func (ru *RequestUri) JsonString() string {
+func (ru *RequestUri) String() string {
 	result := ""
+	if ru.SipUri != nil {
+		result += fmt.Sprintf("%s,", ru.SipUri.String())
+	}
+	if ru.AbsoluteUri != nil {
+		result += fmt.Sprintf("%s,", ru.AbsoluteUri.String())
+	}
+	result = strings.TrimSuffix(result, ",")
 	return result
 }
 func (ru *RequestUri) Parser(raw string) error {
-	raw = strings.TrimPrefix(raw, " ")
-	raw = strings.TrimSuffix(raw, " ")
-	raw = strings.TrimSuffix(raw, "\r")
-	raw = strings.TrimSuffix(raw, "\n")
-	raw = strings.TrimPrefix(raw, "\r")
-	raw = strings.TrimPrefix(raw, "\n")
-	raw = strings.TrimSuffix(raw, " ")
-	raw = strings.TrimPrefix(raw, " ")
 	if ru == nil {
-		return errors.New("RequestUri caller is not allowed to be nil")
+		return errors.New("requestUri caller is not allowed to be nil")
 	}
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = strings.TrimLeft(raw, " ")
+	raw = strings.TrimRight(raw," ")
+	raw = strings.TrimPrefix(raw," ")
+	raw = strings.TrimSuffix(raw," ")
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
@@ -55,14 +64,14 @@ func (ru *RequestUri) Parser(raw string) error {
 	// absolute-uri regexp
 	absoluteUriRegexp := regexp.MustCompile(`.*/{1,}`)
 	if absoluteUriRegexp.MatchString(raw) {
-		ru.AbsoluteUri = CreateAbsoluteUri().(*AbsoluteUri)
+		ru.AbsoluteUri = new(AbsoluteUri)
 		if err := ru.AbsoluteUri.Parser(raw); err != nil {
 			return err
 		}
 	} else {
 		// sip/sips-uri regexp
 		if len(strings.TrimSpace(raw)) > 0 {
-			ru.SipUri = CreateSipUri().(*SipUri)
+			ru.SipUri = new(SipUri)
 			if err := ru.SipUri.Parser(raw); err != nil {
 				return err
 			}
@@ -71,5 +80,21 @@ func (ru *RequestUri) Parser(raw string) error {
 	return nil
 }
 func (ru *RequestUri) Validator() error {
+	if ru == nil {
+		return errors.New("requestUri caller is not allowed to be nil")
+	}
+	if ru.SipUri == nil && ru.AbsoluteUri == nil {
+		return errors.New("sipUri or absoluteUri must has one")
+	}
+	if ru.SipUri != nil {
+		if err := ru.SipUri.Validator(); err != nil {
+			return err
+		}
+	}
+	if ru.AbsoluteUri != nil {
+		if err := ru.AbsoluteUri.Validator(); err != nil {
+			return err
+		}
+	}
 	return nil
 }

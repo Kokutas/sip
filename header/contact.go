@@ -1,7 +1,6 @@
 package header
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -56,61 +55,113 @@ import (
 // contact-extension = generic-param
 // delta-seconds = 1*DIGIT
 type Contact struct {
-	Field       string                 `json:"field"`
-	DisplayName string                 `json:"display-name"`
-	Addr        *sip.SipUri            `json:"name-addr/addr-spec"`
-	CPQ         float32                `json:"q"`
-	CPExpires   int                    `json:"expires"`
-	Extension   map[string]interface{} `json:"contact-extension"`
+	field       string
+	displayName string
+	addr        *sip.SipUri
+	cpq         float32
+	cpExpires   int
+	extension   map[string]interface{}
 }
 
-func CreateContact() sip.Sip {
-	return &Contact{}
-}
-func NewContact(displayName string, addr *sip.SipUri, cpq float32, cpExpires int, extension map[string]interface{}) sip.Sip {
-	return &Contact{
-		Field:       "Contact",
-		DisplayName: displayName,
-		Addr:        addr,
-		CPQ:         cpq,
-		CPExpires:   cpExpires,
-		Extension:   extension,
-	}
+func (c *Contact) Field() string {
+	return c.field
 }
 
-func (contact *Contact) Raw() string {
+func (c *Contact) SetField(field string) {
+	c.field = field
+}
+
+func (c *Contact) DisplayName() string {
+	return c.displayName
+}
+
+func (c *Contact) SetDisplayName(displayName string) {
+	c.displayName = displayName
+}
+
+func (c *Contact) Addr() *sip.SipUri {
+	return c.addr
+}
+
+func (c *Contact) SetAddr(addr *sip.SipUri) {
+	c.addr = addr
+}
+
+func (c *Contact) Cpq() float32 {
+	return c.cpq
+}
+
+func (c *Contact) SetCpq(cpq float32) {
+	c.cpq = cpq
+}
+
+func (c *Contact) CpExpires() int {
+	return c.cpExpires
+}
+
+func (c *Contact) SetCpExpires(cpExpires int) {
+	c.cpExpires = cpExpires
+}
+
+func (c *Contact) Extension() map[string]interface{} {
+	return c.extension
+}
+
+func (c *Contact) SetExtension(extension map[string]interface{}) {
+	c.extension = extension
+}
+func NewContact(displayName string, addr *sip.SipUri, cpq float32, cpExpires int, extension map[string]interface{}) *Contact {
+	return &Contact{field: "Contact", displayName: displayName, addr: addr, cpq: cpq, cpExpires: cpExpires, extension: extension}
+}
+
+func (c *Contact) Raw() (string, error) {
 	result := ""
-	if reflect.DeepEqual(nil, contact) {
-		return result
+	if err := c.Validator(); err != nil {
+		return result, err
 	}
-	result += fmt.Sprintf("%v:", strings.Title(contact.Field))
-	if len(strings.TrimSpace(contact.DisplayName)) > 0 {
-		if strings.Contains(contact.DisplayName, "\"") {
-			result += fmt.Sprintf(" %v", contact.DisplayName)
+	if len(strings.TrimSpace(c.field)) == 0 {
+		c.field = "Contact"
+	}
+	result += fmt.Sprintf("%v:", strings.Title(c.field))
+	if len(strings.TrimSpace(c.displayName)) > 0 {
+		if strings.Contains(c.displayName, "\"") {
+			result += fmt.Sprintf(" %v", c.displayName)
 		} else {
-			result += fmt.Sprintf(" \"%v\"", contact.DisplayName)
+			result += fmt.Sprintf(" \"%v\"", c.displayName)
 		}
-		//	if !reflect.DeepEqual(nil, contact.Addr) {
-		//		result += fmt.Sprintf(" %v", contact.Addr.Raw())
+		//	if !reflect.DeepEqual(nil, c.addr) {
+		//		res,err:=c.addr.Raw()
+		//		if err!=nil{
+		//			return "",err
+		//		}
+		//		result += fmt.Sprintf(" %v", res)
 		//	}
 		//} else {
-		//	if !reflect.DeepEqual(nil, contact.Addr) {
-		//		result += fmt.Sprintf(" <%v>", contact.Addr.Raw())
+		//	if !reflect.DeepEqual(nil, c.addr) {
+		//		res,err:=c.addr.Raw()
+		//		if err!=nil{
+		//			return "",err
+		//		}
+		//		result += fmt.Sprintf(" <%v>", res)
 		//	}
 	}
 	// If the name-addr / addr-spec need to be commented as follows, release the comment in the display name
-	if !reflect.DeepEqual(nil, contact.Addr) {
-		result += fmt.Sprintf(" <%v>", contact.Addr.Raw())
+	if !reflect.DeepEqual(nil, c.addr) {
+		res, err := c.addr.Raw()
+		if err != nil {
+			return "", err
+		}
+		result += fmt.Sprintf(" <%v>", res)
 	}
-	if contact.CPQ >= 0 {
-		result += fmt.Sprintf(";q=%1.1f", contact.CPQ)
+	if c.cpq >= 0 {
+		result += fmt.Sprintf(";q=%1.1f", c.cpq)
 	}
-	if contact.CPExpires >= 0 {
-		result += fmt.Sprintf(";expires=%v", contact.CPExpires)
+	if c.cpExpires >= 0 {
+		result += fmt.Sprintf(";expires=%v", c.cpExpires)
 	}
-	if contact.Extension != nil {
+	if c.extension != nil {
 		extensions := ""
-		for k, v := range contact.Extension {
+		for k, v := range c.extension {
 			if v == nil {
 				extensions += fmt.Sprintf(";%v", k)
 			} else {
@@ -122,24 +173,34 @@ func (contact *Contact) Raw() string {
 		}
 	}
 	result += "\r\n"
-	return result
+	return result, nil
 }
-func (contact *Contact) JsonString() string {
+func (c *Contact) String() string {
 	result := ""
-	if reflect.DeepEqual(nil, contact) {
-		return result
+	if len(strings.TrimSpace(c.field)) > 0 {
+		result += fmt.Sprintf("field: %s,", c.field)
 	}
-	data, err := json.Marshal(contact)
-	if err != nil {
-		return result
+	if len(strings.TrimSpace(c.displayName)) > 0 {
+		result += fmt.Sprintf("display-name: %s,", c.displayName)
 	}
-	result = fmt.Sprintf("%s", data)
-
+	if c.addr != nil {
+		result += fmt.Sprintf("%s,", c.addr.String())
+	}
+	if c.cpq > 0 {
+		result += fmt.Sprintf("q: %1.1f,", c.cpq)
+	}
+	if c.cpExpires >= 0 {
+		result += fmt.Sprintf("expires: %d,", c.cpExpires)
+	}
+	if c.extension != nil {
+		result += fmt.Sprintf("c-extension: %v,", c.extension)
+	}
+	result = strings.TrimSuffix(result, ",")
 	return result
 }
-func (contact *Contact) Parser(raw string) error {
-	if contact == nil {
-		return errors.New("contact caller is not allowed to be nil")
+func (c *Contact) Parser(raw string) error {
+	if c == nil {
+		return errors.New("c caller is not allowed to be nil")
 	}
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
@@ -148,10 +209,10 @@ func (contact *Contact) Parser(raw string) error {
 	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
 	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
 	// filed regexp
-	fieldRegexp := regexp.MustCompile(`(?i)(contact).*?:`)
+	fieldRegexp := regexp.MustCompile(`(?i)(c).*?:`)
 	if fieldRegexp.MatchString(raw) {
 		field := fieldRegexp.FindString(raw)
-		contact.Field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
+		c.field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
 		raw = strings.ReplaceAll(raw, field, "")
 		raw = strings.TrimSuffix(raw, " ")
 		raw = strings.TrimPrefix(raw, " ")
@@ -172,7 +233,7 @@ func (contact *Contact) Parser(raw string) error {
 		displayNames = regexp.MustCompile(`<`).ReplaceAllString(displayNames, "")
 		displayNames = regexp.MustCompile(`:`).ReplaceAllString(displayNames, "")
 		raw = regexp.MustCompile(`.*`+displayNames).ReplaceAllString(raw, "")
-		contact.DisplayName = util.TrimPrefixAndSuffix(displayNames, " ")
+		c.displayName = util.TrimPrefixAndSuffix(displayNames, " ")
 		raw = util.TrimPrefixAndSuffix(raw, " ")
 	}
 	// c-p-q regexp
@@ -182,7 +243,7 @@ func (contact *Contact) Parser(raw string) error {
 		if err != nil {
 			return nil
 		}
-		contact.CPQ = float32(cpq)
+		c.cpq = float32(cpq)
 		raw = cpqRegexp.ReplaceAllString(raw, "")
 		raw = util.TrimPrefixAndSuffix(raw, " ")
 	}
@@ -194,11 +255,11 @@ func (contact *Contact) Parser(raw string) error {
 		if err != nil {
 			return err
 		}
-		contact.CPExpires = cpExpires
+		c.cpExpires = cpExpires
 		raw = cpExpiresRegexp.ReplaceAllString(raw, "")
 		raw = util.TrimPrefixAndSuffix(raw, " ")
 	}
-	// contact-extension regexp
+	// c-extension regexp
 	extensionRegexp := regexp.MustCompile(`;.*`)
 	if extensionRegexp.MatchString(raw) {
 		raw = extensionRegexp.ReplaceAllString(raw, "")
@@ -219,10 +280,9 @@ func (contact *Contact) Parser(raw string) error {
 			}
 		}
 		if len(m) > 0 {
-			contact.Extension = m
+			c.extension = m
 		}
 	}
-
 	// addr regexp
 	addrRegexp := regexp.MustCompile(schemasRegexpStr + `.*`)
 	if addrRegexp.MatchString(raw) {
@@ -232,24 +292,24 @@ func (contact *Contact) Parser(raw string) error {
 		addr = regexp.MustCompile(`>.*`).ReplaceAllString(addr, "")
 		addr = util.TrimPrefixAndSuffix(addr, ";")
 		addr = util.TrimPrefixAndSuffix(addr, " ")
-		contact.Addr = sip.CreateSipUri().(*sip.SipUri)
-		if err := contact.Addr.Parser(addr); err != nil {
+		c.addr = new(sip.SipUri)
+		if err := c.addr.Parser(addr); err != nil {
 			return err
 		}
 	}
 
 	return nil
 }
-func (contact *Contact) Validator() error {
+func (c *Contact) Validator() error {
 
-	if contact == nil {
+	if c == nil {
 		return errors.New("contact caller is not allowed to be nil")
 	}
-	if len(strings.TrimSpace(contact.Field)) == 0 {
+	if len(strings.TrimSpace(c.field)) == 0 {
 		return errors.New("field is not allowed to be empty")
 	}
-	if !regexp.MustCompile(`(?i)(contact)`).Match([]byte(contact.Field)) {
+	if !regexp.MustCompile(`(?i)(contact)`).Match([]byte(c.field)) {
 		return errors.New("field is not match")
 	}
-	return contact.Addr.Validator()
+	return c.addr.Validator()
 }

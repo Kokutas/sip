@@ -1,12 +1,9 @@
 package header
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"regexp"
-	"sip"
 	"sip/util"
 	"strconv"
 	"strings"
@@ -29,57 +26,68 @@ import (
 //  	Content-Length: 349
 //  	l: 173
 // Content-Length = ( "Content-Length" / "l" ) HCOLON 1*DIGIT
+
 type ContentLength struct {
-	Field  string `json:"field"`
-	Length uint   `json:"length"`
+	field  string
+	length uint
 }
 
-func CreateContentLength() sip.Sip {
-	return &ContentLength{}
+func (cl *ContentLength) Field() string {
+	return cl.field
 }
-func NewContentLength(length uint) sip.Sip {
-	return &ContentLength{
-		Field:  "Content-Length",
-		Length: length,
-	}
+
+func (cl *ContentLength) SetField(field string) {
+	cl.field = field
 }
-func (cl *ContentLength) Raw() string {
+
+func (cl *ContentLength) Length() uint {
+	return cl.length
+}
+
+func (cl *ContentLength) SetLength(length uint) {
+	cl.length = length
+}
+
+func NewContentLength(length uint) *ContentLength {
+	return &ContentLength{field: "Content-Length", length: length}
+}
+func (cl *ContentLength) Raw() (string, error) {
 	result := ""
-	if reflect.DeepEqual(nil, cl) {
-		return result
+	if err := cl.Validator(); err != nil {
+		return result, err
 	}
-	result += fmt.Sprintf("%v:", cl.Field)
-	result += fmt.Sprintf(" %v", cl.Length)
+	if len(strings.TrimSpace(cl.field)) == 0 {
+		cl.field = "Content-Length"
+	}
+	result += fmt.Sprintf("%s:", strings.Title(cl.field))
+	result += fmt.Sprintf(" %v", cl.length)
 	result += "\r\n"
-	return result
+	return result, nil
 }
-func (cl *ContentLength) JsonString() string {
+func (cl *ContentLength) String() string {
 	result := ""
-	if reflect.DeepEqual(nil, cl) {
-		return result
+	if len(strings.TrimSpace(cl.field)) > 0 {
+		result += fmt.Sprintf("field: %s,", cl.field)
 	}
-	data, err := json.Marshal(cl)
-	if err != nil {
-		return result
-	}
-	result = fmt.Sprintf("%s", data)
+	result += fmt.Sprintf("length: %d,", cl.length)
+	result = strings.TrimSuffix(result, ",")
 	return result
 }
 func (cl *ContentLength) Parser(raw string) error {
 	if cl == nil {
 		return errors.New("content-length caller is not allowed to be nil")
 	}
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = util.TrimPrefixAndSuffix(raw, " ")
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
-	raw = util.TrimPrefixAndSuffix(raw, " ")
-	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
-	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
 	// filed regexp
 	fieldRegexp := regexp.MustCompile(`(?i)(content-length).*?:`)
 	if fieldRegexp.MatchString(raw) {
 		field := fieldRegexp.FindString(raw)
-		cl.Field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
+		cl.field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
 		raw = strings.ReplaceAll(raw, field, "")
 	} else {
 		return errors.New("filed is not match")
@@ -90,7 +98,7 @@ func (cl *ContentLength) Parser(raw string) error {
 		if err != nil {
 			return err
 		}
-		cl.Length = uint(length)
+		cl.length = uint(length)
 	} else {
 		return errors.New("length is not match")
 	}
@@ -101,10 +109,10 @@ func (cl *ContentLength) Validator() error {
 	if cl == nil {
 		return errors.New("content-length caller is not allowed to be nil")
 	}
-	if len(strings.TrimSpace(cl.Field)) == 0 {
+	if len(strings.TrimSpace(cl.field)) == 0 {
 		return errors.New("field is not allowed to be empty")
 	}
-	if !regexp.MustCompile(`(?i)(content-length)`).Match([]byte(cl.Field)) {
+	if !regexp.MustCompile(`(?i)(content-length)`).Match([]byte(cl.field)) {
 		return errors.New("field is not match")
 	}
 	return nil

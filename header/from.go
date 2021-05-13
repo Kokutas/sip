@@ -1,7 +1,6 @@
 package header
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -50,27 +49,56 @@ import (
 // from-param  =  tag-param / generic-param
 // tag-param   =  "tag" EQUAL token
 type From struct {
-	Field       string      `json:"field"`
-	DisplayName string      `json:"display-name"`
-	Addr        *sip.SipUri `json:"name-addr/addr-spec"`
-	Tag         string      `json:"tag"`
+	field       string
+	displayName string
+	addr        *sip.SipUri
+	tag         string
 }
 
-func CreateFrom() sip.Sip {
-	return &From{}
+func (from *From) Field() string {
+	return from.field
 }
-func NewFrom(displayName string, addr *sip.SipUri, tag string) sip.Sip {
+
+func (from *From) SetField(field string) {
+	from.field = field
+}
+
+func (from *From) DisplayName() string {
+	return from.displayName
+}
+
+func (from *From) SetDisplayName(displayName string) {
+	from.displayName = displayName
+}
+
+func (from *From) Addr() *sip.SipUri {
+	return from.addr
+}
+
+func (from *From) SetAddr(addr *sip.SipUri) {
+	from.addr = addr
+}
+
+func (from *From) Tag() string {
+	return from.tag
+}
+
+func (from *From) SetTag(tag string) {
+	from.tag = tag
+}
+
+func NewFrom(displayName string, addr *sip.SipUri, tag string) *From {
 	return &From{
-		Field:       "From",
-		DisplayName: displayName,
-		Addr:        addr,
-		Tag:         tag,
+		field:       "From",
+		displayName: displayName,
+		addr:        addr,
+		tag:         tag,
 	}
 }
-func (from *From) Raw() string {
+func (from *From) Raw() (string, error) {
 	result := ""
-	if reflect.DeepEqual(nil, from) {
-		return result
+	if err := from.Validator(); err != nil {
+		return result, err
 	}
 	//The optional "display-name" is meant to be rendered by a human user
 	//   interface.  A system SHOULD use the display name "Anonymous" if the
@@ -78,39 +106,57 @@ func (from *From) Raw() string {
 	//   name" is empty, the "name-addr" form MUST be used if the "addr-spec"
 	//   contains a comma, question mark, or semicolon.  Syntax issues are
 	//   discussed in Section 7.3.1.
-	result += fmt.Sprintf("%v:", strings.Title(from.Field))
-	if len(strings.TrimSpace(from.DisplayName)) > 0 {
-		if strings.Contains(from.DisplayName, "\"") {
-			result += fmt.Sprintf(" %v", from.DisplayName)
+	result += fmt.Sprintf("%s:", strings.Title(from.field))
+	if len(strings.TrimSpace(from.displayName)) > 0 {
+		if strings.Contains(from.displayName, "\"") {
+			result += fmt.Sprintf(" %s", from.displayName)
 		} else {
-			result += fmt.Sprintf(" \"%v\"", from.DisplayName)
+			result += fmt.Sprintf(" \"%s\"", from.displayName)
 		}
-		//	if !reflect.DeepEqual(nil, from.Addr) {
-		//		result += fmt.Sprintf(" %v", from.Addr.Raw())
-		//	}
+		//	if !reflect.DeepEqual(nil, from.addr) {
+		//		res,err:=from.addr.Raw()
+		//		if err!=nil{
+		//			return "",err
+		//		}
+		//		result += fmt.Sprintf(" %v", res)
 		//} else {
-		//	if !reflect.DeepEqual(nil, from.Addr) {
-		//		result += fmt.Sprintf(" <%v>", from.Addr.Raw())
+		//	if !reflect.DeepEqual(nil, from.addr) {
+		//		res,err:=from.addr.Raw()
+		//		if err!=nil{
+		//			return "",err
+		//		}
+		//		result += fmt.Sprintf(" <%v>", res)
 		//	}
 	}
 	// If the name-addr / addr-spec need to be commented as follows, release the comment in the display name
-	if !reflect.DeepEqual(nil, from.Addr) {
-		result += fmt.Sprintf(" <%v>", from.Addr.Raw())
+	if !reflect.DeepEqual(nil, from.addr) {
+		res, err := from.addr.Raw()
+		if err != nil {
+			return "", err
+		}
+		result += fmt.Sprintf(" <%v>", res)
 	}
-	if len(strings.TrimSpace(from.Tag)) > 0 {
-		result += fmt.Sprintf(";tag=%v", from.Tag)
+	if len(strings.TrimSpace(from.tag)) > 0 {
+		result += fmt.Sprintf(";tag=%v", from.tag)
 	}
 	result += "\r\n"
-	return result
+	return result, nil
 }
-func (from *From) JsonString() string {
+func (from *From) String() string {
 	result := ""
-	if reflect.DeepEqual(nil, from) {
-		return result
+	if len(strings.TrimSpace(from.field)) > 0 {
+		result += fmt.Sprintf("field: %s,", from.field)
 	}
-	if data, err := json.Marshal(from); err == nil {
-		result = fmt.Sprintf("%s", data)
+	if len(strings.TrimSpace(from.displayName)) > 0 {
+		result += fmt.Sprintf("display-name: %s,", from.displayName)
 	}
+	if from.addr != nil {
+		result += fmt.Sprintf("%s,", from.addr.String())
+	}
+	if len(strings.TrimSpace(from.tag)) > 0 {
+		result += fmt.Sprintf("tag: %s,", from.tag)
+	}
+	result = strings.TrimSuffix(result, ",")
 	return result
 }
 func (from *From) Parser(raw string) error {
@@ -128,7 +174,7 @@ func (from *From) Parser(raw string) error {
 	fieldRegexp := regexp.MustCompile(`(?i)(from).*?:`)
 	if fieldRegexp.MatchString(raw) {
 		field := fieldRegexp.FindString(raw)
-		from.Field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
+		from.field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
 		raw = strings.ReplaceAll(raw, field, "")
 		raw = strings.TrimSuffix(raw, " ")
 		raw = strings.TrimPrefix(raw, " ")
@@ -148,7 +194,7 @@ func (from *From) Parser(raw string) error {
 		displayNames = regexp.MustCompile(`<`).ReplaceAllString(displayNames, "")
 		displayNames = regexp.MustCompile(`:`).ReplaceAllString(displayNames, "")
 		raw = regexp.MustCompile(`.*`+displayNames).ReplaceAllString(raw, "")
-		from.DisplayName = util.TrimPrefixAndSuffix(displayNames, " ")
+		from.displayName = util.TrimPrefixAndSuffix(displayNames, " ")
 		raw = util.TrimPrefixAndSuffix(raw, " ")
 	}
 	// tag
@@ -156,7 +202,7 @@ func (from *From) Parser(raw string) error {
 	if tagRegexp.MatchString(raw) {
 		tag := tagRegexp.FindString(raw)
 		raw = tagRegexp.ReplaceAllString(raw, "")
-		from.Tag = regexp.MustCompile(`;(?i)tag=`).ReplaceAllString(tag, "")
+		from.tag = regexp.MustCompile(`;(?i)tag=`).ReplaceAllString(tag, "")
 	}
 	// addr regexp
 	addrRegexp := regexp.MustCompile(schemasRegexpStr + `.*`)
@@ -167,8 +213,8 @@ func (from *From) Parser(raw string) error {
 		addr = regexp.MustCompile(`>.*`).ReplaceAllString(addr, "")
 		addr = util.TrimPrefixAndSuffix(addr, ";")
 		addr = util.TrimPrefixAndSuffix(addr, " ")
-		from.Addr = sip.CreateSipUri().(*sip.SipUri)
-		if err := from.Addr.Parser(addr); err != nil {
+		from.addr = new(sip.SipUri)
+		if err := from.addr.Parser(addr); err != nil {
 			return err
 		}
 	}
@@ -179,11 +225,11 @@ func (from *From) Validator() error {
 	if from == nil {
 		return errors.New("from caller is not allowed to be nil")
 	}
-	if len(strings.TrimSpace(from.Field)) == 0 {
+	if len(strings.TrimSpace(from.field)) == 0 {
 		return errors.New("field is not allowed to be empty")
 	}
-	if !regexp.MustCompile(`(?i)(from)`).Match([]byte(from.Field)) {
+	if !regexp.MustCompile(`(?i)(from)`).Match([]byte(from.field)) {
 		return errors.New("field is not match")
 	}
-	return from.Addr.Validator()
+	return from.addr.Validator()
 }

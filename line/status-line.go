@@ -1,7 +1,6 @@
 package line
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -77,55 +76,71 @@ import (
 // 			      /   "606"  ;  Not Acceptable
 
 type StatusLine struct {
-	*sip.SipVersion `json:"SIP-Version"`
-	StatusCode      int    `json:"Status-Code"`
-	ReasonPhrase    string `json:"Reason-Phrase"`
+	*sip.SipVersion
+	statusCode      int
+	reasonPhrase    string
+}
+func (sl *StatusLine) StatusCode() int {
+	return sl.statusCode
 }
 
-func CreateStatusLine() sip.Sip {
-	return &StatusLine{}
+func (sl *StatusLine) SetStatusCode(statusCode int) {
+	sl.statusCode = statusCode
 }
-func NewStatusLine(version *sip.SipVersion, code int, reason string) sip.Sip {
-	return &StatusLine{version, code, reason}
+
+func (sl *StatusLine) ReasonPhrase() string {
+	return sl.reasonPhrase
 }
-func (sl *StatusLine) Raw() string {
+
+func (sl *StatusLine) SetReasonPhrase(reasonPhrase string) {
+	sl.reasonPhrase = reasonPhrase
+}
+func NewStatusLine(sipVersion *sip.SipVersion, statusCode int, reasonPhrase string) *StatusLine {
+	return &StatusLine{SipVersion: sipVersion, statusCode: statusCode, reasonPhrase: reasonPhrase}
+}
+
+func (sl *StatusLine) Raw() (string,error) {
 	result := ""
-	if sl == nil {
-		return result
+	if err:=sl.Validator();err!=nil {
+		return result,err
 	}
 	if sl.SipVersion != nil {
-		result += sl.SipVersion.Raw()
+		res,err:=sl.SipVersion.Raw()
+		if err!=nil{
+			return "", err
+		}
+		result +=res
 	}
-	if sl.StatusCode > 0 && len(strings.TrimSpace(sl.ReasonPhrase)) > 0 {
-		result += fmt.Sprintf(" %v %v", sl.StatusCode, sl.ReasonPhrase)
+	if sl.statusCode > 0 && len(strings.TrimSpace(sl.reasonPhrase)) > 0 {
+		result += fmt.Sprintf(" %v %v", sl.statusCode, sl.reasonPhrase)
 	}
 	result += "\r\n"
-	return result
+	return result,nil
 }
-func (sl *StatusLine) JsonString() string {
-	result := ""
-	if sl == nil {
-		return result
+func (sl *StatusLine) String() string {
+	result:=""
+	if sl.SipVersion!=nil{
+		result+=fmt.Sprintf("%s,",sl.SipVersion.String())
 	}
-	data, err := json.Marshal(sl)
-	if err != nil {
-		return result
+	if sl.statusCode>0{
+		result+=fmt.Sprintf("status-code: %v,",sl.statusCode)
 	}
-	result = fmt.Sprintf("%s", data)
+	if len(strings.TrimSpace(sl.reasonPhrase))>0{
+		result+=fmt.Sprintf("reason-phrase: %s,",sl.reasonPhrase)
+	}
+	result = strings.TrimSuffix(result,",")
 	return result
 }
 func (sl *StatusLine) Parser(raw string) error {
-	raw = strings.TrimPrefix(raw, " ")
-	raw = strings.TrimSuffix(raw, " ")
-	raw = strings.TrimSuffix(raw, "\r")
-	raw = strings.TrimSuffix(raw, "\n")
-	raw = strings.TrimPrefix(raw, "\r")
-	raw = strings.TrimPrefix(raw, "\n")
-	raw = strings.TrimSuffix(raw, " ")
-	raw = strings.TrimPrefix(raw, " ")
 	if sl == nil {
-		return errors.New("StatusLine caller is not allowed to be nil")
+		return errors.New("statusLine caller is not allowed to be nil")
 	}
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = strings.TrimLeft(raw, " ")
+	raw = strings.TrimRight(raw," ")
+	raw = strings.TrimPrefix(raw," ")
+	raw = strings.TrimSuffix(raw," ")
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
@@ -140,9 +155,11 @@ func (sl *StatusLine) Parser(raw string) error {
 	if sipVersionRegexp.MatchString(raw) {
 		version := sipVersionRegexp.FindString(raw)
 		raw = sipVersionRegexp.ReplaceAllString(raw, "")
-		raw = strings.TrimSuffix(raw, " ")
-		raw = strings.TrimPrefix(raw, " ")
-		sl.SipVersion = sip.CreateSipVersion().(*sip.SipVersion)
+		raw = strings.TrimLeft(raw, " ")
+		raw = strings.TrimRight(raw," ")
+		raw = strings.TrimPrefix(raw," ")
+		raw = strings.TrimSuffix(raw," ")
+		sl.SipVersion = new(sip.SipVersion)
 		if err := sl.SipVersion.Parser(version); err != nil {
 			return err
 		}
@@ -153,31 +170,33 @@ func (sl *StatusLine) Parser(raw string) error {
 		if err != nil {
 			return err
 		}
-		sl.StatusCode = code
+		sl.statusCode = code
 		raw = statusCodeRegexp.ReplaceAllString(raw, "")
 		raw = strings.TrimSuffix(raw, "\r")
 		raw = strings.TrimSuffix(raw, "\n")
 		raw = strings.TrimPrefix(raw, "\r")
 		raw = strings.TrimPrefix(raw, "\n")
-		raw = strings.TrimSuffix(raw, " ")
-		raw = strings.TrimPrefix(raw, " ")
+		raw = strings.TrimLeft(raw, " ")
+		raw = strings.TrimRight(raw," ")
+		raw = strings.TrimPrefix(raw," ")
+		raw = strings.TrimSuffix(raw," ")
 	}
 	if len(strings.TrimSpace(raw)) > 0 {
-		sl.ReasonPhrase = raw
+		sl.reasonPhrase = raw
 	}
 	return nil
 }
 func (sl *StatusLine) Validator() error {
 	if sl == nil {
-		return errors.New("StatusLine caller is not allowed to be nil")
+		return errors.New("statusLine caller is not allowed to be nil")
 	}
 	if err := sl.SipVersion.Validator(); err != nil {
 		return err
 	}
-	if sl.StatusCode <= 0 {
+	if sl.statusCode <= 0 {
 		return errors.New("invalid statusCode")
 	}
-	if len(strings.TrimSpace(sl.ReasonPhrase)) == 0 {
+	if len(strings.TrimSpace(sl.reasonPhrase)) == 0 {
 		return errors.New("reasonPhrase is not allowed to be empty")
 	}
 	return nil

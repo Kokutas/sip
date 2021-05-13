@@ -1,12 +1,9 @@
 package header
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"regexp"
-	"sip"
 	"sip/util"
 	"strconv"
 	"strings"
@@ -30,55 +27,67 @@ import (
 //  Max-Forwards = "Max-Forwards" HCOLON 1*DIGIT
 
 type MaxForwards struct {
-	Field    string `json:"field"`
-	Forwards uint8  `json:"forwards"`
+	field    string
+	forwards uint8
 }
 
-func CreateMaxForwards() sip.Sip {
-	return &MaxForwards{}
+func (mf *MaxForwards) Field() string {
+	return mf.field
 }
-func NewMaxForwards(forwards uint8) sip.Sip {
+
+func (mf *MaxForwards) SetField(field string) {
+	mf.field = field
+}
+
+func (mf *MaxForwards) Forwards() uint8 {
+	return mf.forwards
+}
+
+func (mf *MaxForwards) SetForwards(forwards uint8) {
+	mf.forwards = forwards
+}
+
+func NewMaxForwards(forwards uint8) *MaxForwards {
 	return &MaxForwards{
-		Field:    "Max-Forwards",
-		Forwards: forwards,
+		field:    "Max-Forwards",
+		forwards: forwards,
 	}
 }
-func (mf *MaxForwards) Raw() string {
+func (mf *MaxForwards) Raw() (string, error) {
 	result := ""
-	if reflect.DeepEqual(nil, mf) {
-		return result
+	if err := mf.Validator(); err != nil {
+		return result, err
 	}
-	result += fmt.Sprintf("%v:", strings.Title(mf.Field))
-	result += fmt.Sprintf(" %v", mf.Forwards)
+	if len(strings.TrimSpace(mf.field)) == 0 {
+		mf.field = "Max-Forwards"
+	}
+	result += fmt.Sprintf("%s:", strings.Title(mf.field))
+	result += fmt.Sprintf(" %d", mf.forwards)
 	result += "\r\n"
-	return result
+	return result, nil
 }
-func (mf *MaxForwards) JsonString() string {
+func (mf *MaxForwards) String() string {
 	result := ""
-	if reflect.DeepEqual(nil, mf) {
-		return result
+	if len(strings.TrimSpace(mf.field)) > 0 {
+		result += fmt.Sprintf("field: %s,", mf.field)
 	}
-	data, err := json.Marshal(mf)
-	if err != nil {
-		return result
-	}
-	result = fmt.Sprintf("%s", data)
+	result += fmt.Sprintf("forwards: %d,", mf.forwards)
+	result = strings.TrimSuffix(result, ",")
 	return result
 }
 func (mf *MaxForwards) Parser(raw string) error {
 	if mf == nil {
 		return errors.New("max-forwards caller is not allowed to be nil")
 	}
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = util.TrimPrefixAndSuffix(raw, " ")
 	if len(strings.TrimSpace(raw)) == 0 {
 		return errors.New("raw parameter is not allowed to be empty")
 	}
-	raw = util.TrimPrefixAndSuffix(raw, " ")
-	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
-	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
-
 	fieldRegexp := regexp.MustCompile(`(?i)(max-forwards)`)
 	if fieldRegexp.MatchString(raw) {
-		mf.Field = fieldRegexp.FindString(raw)
+		mf.field = fieldRegexp.FindString(raw)
 	}
 	forwardsRegexp := regexp.MustCompile(`\d+`)
 	if forwardsRegexp.MatchString(raw) {
@@ -86,7 +95,7 @@ func (mf *MaxForwards) Parser(raw string) error {
 		if err != nil {
 			return err
 		}
-		mf.Forwards = uint8(forwards)
+		mf.forwards = uint8(forwards)
 	} else {
 		return errors.New("forwards is not match")
 	}
@@ -96,10 +105,10 @@ func (mf *MaxForwards) Validator() error {
 	if mf == nil {
 		return errors.New("max-forwards caller is not allowed to be nil")
 	}
-	if len(strings.TrimSpace(mf.Field)) == 0 {
+	if len(strings.TrimSpace(mf.field)) == 0 {
 		return errors.New("field is not allowed to be empty")
 	}
-	if !regexp.MustCompile(`(?i)(max-forwards)`).Match([]byte(mf.Field)) {
+	if !regexp.MustCompile(`(?i)(max-forwards)`).Match([]byte(mf.field)) {
 		return errors.New("field is not match")
 	}
 
