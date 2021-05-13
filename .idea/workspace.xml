@@ -2,55 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="af13ce96-28a6-40ad-b179-b814ea863a90" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/sip.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/absolute-uri.go" beforeDir="false" afterPath="$PROJECT_DIR$/absolute-uri.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/authorization.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/authorization.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/authorization_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/authorization_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/call-id.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/call-id.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/call-id_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/call-id_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/contact.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/contact.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/contact_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/contact_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/content-length.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/content-length.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/content-length_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/content-length_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/cseq.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/cseq.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/cseq_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/cseq_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/date.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/date.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/date_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/date_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/expires.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/expires.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/expires_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/expires_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/from.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/from.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/from_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/from_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/max-forwards.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/max-forwards.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/max-forwards_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/max-forwards_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/to.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/to.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/to_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/to_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/user-agent.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/user-agent.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/user-agent_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/user-agent_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/via.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/via.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/via_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/via_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/www-authenticate.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/www-authenticate.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header/www-authenticate_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/header/www-authenticate_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/host.go" beforeDir="false" afterPath="$PROJECT_DIR$/host.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/host_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/host_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hostport.go" beforeDir="false" afterPath="$PROJECT_DIR$/hostport.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hostport_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/hostport_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/line/request-line.go" beforeDir="false" afterPath="$PROJECT_DIR$/line/request-line.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/line/request-line_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/line/request-line_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/line/status-line.go" beforeDir="false" afterPath="$PROJECT_DIR$/line/status-line.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/line/status-line_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/line/status-line_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/parameters.go" beforeDir="false" afterPath="$PROJECT_DIR$/parameters.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/parameters_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/parameters_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/request-uri.go" beforeDir="false" afterPath="$PROJECT_DIR$/request-uri.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sip-version.go" beforeDir="false" afterPath="$PROJECT_DIR$/sip-version.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sip.go" beforeDir="false" afterPath="$PROJECT_DIR$/sip-layer.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/test/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/uri.go" beforeDir="false" afterPath="$PROJECT_DIR$/uri.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/uri_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/uri_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/userinfo.go" beforeDir="false" afterPath="$PROJECT_DIR$/userinfo.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/userinfo_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/userinfo_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/util/string.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sip.go" beforeDir="false" afterPath="$PROJECT_DIR$/sip.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

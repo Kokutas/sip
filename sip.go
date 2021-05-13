@@ -16,9 +16,18 @@ type Sip struct {
 	*body.Body
 }
 
-func Parser(raw string) *Sip {
+func NewSip(requestLine *line.RequestLine, statusLine *line.StatusLine, header *header.Header, body *body.Body) *Sip {
+	return &Sip{RequestLine: requestLine, StatusLine: statusLine, Header: header, Body: body}
+}
+
+func (sip *Sip)Raw()(string,error){
+	return "",nil
+}
+func (sip *Sip)String()string{
+	return ""
+}
+func (sip *Sip)Parser(raw string) error {
 	raw = util.TrimPrefixAndSuffix(raw, " ")
-	sip := new(Sip)
 	// reqeust-line regexp
 	// methods regexp
 	methodsRegexpStr := `^(?i)(`
@@ -53,5 +62,9 @@ func Parser(raw string) *Sip {
 	// body-line regexp
 	// content-length
 
-	return sip
+	return nil
+}
+
+func (sip *Sip)Validator()error{
+	return nil
 }
