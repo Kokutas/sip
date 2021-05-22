@@ -71,7 +71,7 @@ type SipUri struct {
 	headers       sync.Map
 	isOrder       bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
 	order         chan string // It is convenient to record the order of the original parameter fields when parsing
-	source        string      // userinfo source string
+	source        string      // sip-uri/sips-uri source string
 }
 
 func (sipUri *SipUri) SetSchema(schema string) {

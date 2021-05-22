@@ -1,5 +1,12 @@
 package sip
 
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
 // https://www.rfc-editor.org/rfc/rfc3261.html#section-7.2
 //
 // 7.2 Responses
@@ -63,3 +70,162 @@ package sip
 // extension-code  =  3DIGIT
 // Reason-Phrase   =  *(reserved / unreserved / escaped
 //                    / UTF8-NONASCII / UTF8-CONT / SP / HTAB)
+
+type StatusLine struct {
+	schema       string
+	version      float64
+	statusCode   uint
+	reasonPhrase string
+	isOrder      bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
+	order        chan string // It is convenient to record the order of the original parameter fields when parsing
+	source       string      // status-line source string
+}
+
+func (statusLine *StatusLine) SetSchema(schema string) {
+	if regexp.MustCompile(`(?i)(sip|sips)`).MatchString(schema) {
+		statusLine.schema = schema
+	} else {
+		statusLine.schema = "sip"
+	}
+}
+func (statusLine *StatusLine) GetSchema() string {
+	return statusLine.schema
+}
+func (statusLine *StatusLine) SetVersion(version float64) {
+	statusLine.version = version
+}
+func (statusLine *StatusLine) GetVersion() float64 {
+	return statusLine.version
+}
+func (statusLine *StatusLine) SetStatusCode(statusCode uint) {
+	statusLine.statusCode = statusCode
+}
+func (statusLine *StatusLine) GetStatusCode() uint {
+	return statusLine.statusCode
+}
+func (statusLine *StatusLine) SetReasonPhrase(reasonPhrease string) {
+	statusLine.reasonPhrase = reasonPhrease
+}
+func (statusLine *StatusLine) GetReasonPhrase() string {
+	return statusLine.reasonPhrase
+}
+func (statusLine *StatusLine) GetIsOrder() bool {
+	return statusLine.isOrder
+}
+func (statusLine *StatusLine) GetOrder() []string {
+	result := make([]string, 0)
+	if statusLine.order == nil {
+		return result
+	}
+	for data := range statusLine.order {
+		result = append(result, data)
+	}
+	return result
+}
+func (statusLine *StatusLine) SetSource(source string) {
+	statusLine.source = source
+}
+func (statusLine *StatusLine) GetSource() string {
+	return statusLine.source
+}
+func NewStatusLine(schema string, version float64, statusCode uint, reasonPhrase string) *StatusLine {
+	return &StatusLine{
+		schema:       schema,
+		version:      version,
+		statusCode:   statusCode,
+		reasonPhrase: reasonPhrase,
+		isOrder:      false,
+		order:        make(chan string, 1024),
+	}
+}
+func (statusLine *StatusLine) Raw() string {
+	result := ""
+	if statusLine.isOrder {
+		for data := range statusLine.order {
+			result += data
+		}
+		statusLine.isOrder = false
+		result += "\r\n"
+		return result
+	}
+	if len(strings.TrimSpace(statusLine.schema)) == 0 {
+		statusLine.schema = "sip"
+	}
+	// schema: sip,sips,tel etc.
+	if len(strings.TrimSpace(statusLine.schema)) > 0 {
+		result += strings.ToUpper(statusLine.schema)
+	}
+	// version: 2.0
+	result += fmt.Sprintf("/%1.1f", statusLine.version)
+	result += fmt.Sprintf(" %03d", statusLine.statusCode)
+	if len(strings.TrimSpace(statusLine.reasonPhrase)) > 0 {
+		result += fmt.Sprintf(" %s", statusLine.reasonPhrase)
+	}
+	result += "\r\n"
+	return result
+}
+func (statusLine *StatusLine) Parse(raw string) {
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	if len(strings.TrimSpace(raw)) == 0 {
+		return
+	}
+	// schema regexp string
+	schemasRegexpStr := `^(?i)(`
+	for _, v := range schemas {
+		schemasRegexpStr += v + "|"
+	}
+	schemasRegexpStr = strings.TrimSuffix(schemasRegexpStr, "|")
+	schemasRegexpStr += ")( )?"
+	// schema and version regexp
+	schemaAndVersionRegexp := regexp.MustCompile(schemasRegexpStr + `/( )?\d\.\d`)
+
+	if !schemaAndVersionRegexp.MatchString(raw) {
+		return
+	}
+	statusLine.source = raw
+	// status-line order
+	statusLine.statuslineOrder(raw)
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	// schema regexp
+	schemaRegexp := regexp.MustCompile(schemasRegexpStr)
+	// version regexp
+	versionRegexp := regexp.MustCompile(`\d\.[0-9]{1}`)
+	if schemaAndVersionRegexp.MatchString(raw) {
+		schemaAndVersion := schemaAndVersionRegexp.FindString(raw)
+		schemaAndVersion = stringTrimPrefixAndTrimSuffix(schemaAndVersion, " ")
+		if schemaRegexp.MatchString(schemaAndVersion) {
+			schema := schemaRegexp.FindString(schemaAndVersion)
+			schema = stringTrimPrefixAndTrimSuffix(schema, " ")
+			statusLine.schema = schema
+		}
+		if versionRegexp.MatchString(schemaAndVersion) {
+			versions := versionRegexp.Find([]byte(schemaAndVersion))
+			version, _ := strconv.ParseFloat(string(versions), 64)
+			statusLine.version = version
+		}
+		raw = strings.ReplaceAll(raw, schemaAndVersion, "")
+	}
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	// status-code regexp
+	statusCodeRegexp := regexp.MustCompile(`\d{3}`)
+	if statusCodeRegexp.MatchString(raw) {
+		statusCodes := statusCodeRegexp.FindString(raw)
+		statusCode, _ := strconv.Atoi(statusCodes)
+		statusLine.statusCode = uint(statusCode)
+		raw = strings.ReplaceAll(raw, statusCodes, "")
+	}
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	if len(strings.TrimSpace(raw)) > 0 {
+		statusLine.reasonPhrase = raw
+	}
+}
+func (statusLine *StatusLine) statuslineOrder(raw string) {
+	if statusLine.order == nil {
+		statusLine.order = make(chan string, 1024)
+	}
+	statusLine.isOrder = true
+	defer close(statusLine.order)
+	statusLine.order <- raw
+}
