@@ -390,7 +390,6 @@ func (v *Via) Raw() string {
 		}
 
 	} else {
-		fmt.Println("进来了")
 		if v.rport == 1 {
 			uri += fmt.Sprintf(";%s", "rport")
 		} else if v.rport > 1 {

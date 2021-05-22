@@ -49,11 +49,11 @@ type CSeq struct {
 	field  string // "CSeq"
 	number uint32 // sequence number
 	method string // method
-	source string // to header line source string
+	source string // cseq header line source string
 }
 
 func (cSeq *CSeq) SetField(field string) {
-	if regexp.MustCompile(`^(?i)(cSeq)$`).MatchString(field) {
+	if regexp.MustCompile(`^(?i)(cseq)$`).MatchString(field) {
 		cSeq.field = strings.Title(field)
 	}
 }
