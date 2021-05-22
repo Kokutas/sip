@@ -1,5 +1,12 @@
 package sip
 
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
 // https://www.rfc-editor.org/rfc/rfc3261.html#section-7.1
 //
 // 7.1 Requests
@@ -102,11 +109,13 @@ package sip
 // o  the default reason phrase for that response code, if
 //    applicable;
 type RequestLine struct {
-	method string // method:INVITE, ACK,BYE,CANCEL,REGISTER,OPTIONS,INFO etc.
-	// requestUri
-	schema  string  // sip,sips,tel etc.
-	version float64 // 2.0
-	source  string
+	method     string      // method:INVITE, ACK,BYE,CANCEL,REGISTER,OPTIONS,INFO etc.
+	requestUri *RequestUri // SIP-URI/SIPS-URI
+	schema     string      // sip,sips,tel etc.
+	version    float64     // 2.0
+	isOrder    bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
+	order      chan string // It is convenient to record the order of the original parameter fields when parsing
+	source     string      // userinfo source string
 }
 
 func (requestLine *RequestLine) SetMethod(method string) {
@@ -115,6 +124,13 @@ func (requestLine *RequestLine) SetMethod(method string) {
 func (requestLine *RequestLine) GetMethod() string {
 	return requestLine.method
 }
+func (requestLine *RequestLine) SetRequestUri(requestUri *RequestUri) {
+	requestLine.requestUri = requestUri
+}
+func (requestLine *RequestLine) GetRequestUri() *RequestUri {
+	return requestLine.requestUri
+}
+
 func (requestLine *RequestLine) SetSchema(schema string) {
 	requestLine.schema = schema
 }
@@ -127,10 +143,135 @@ func (requestLine *RequestLine) SetVersion(version float64) {
 func (requestLine *RequestLine) GetVersion() float64 {
 	return requestLine.version
 }
-
+func (requestLine *RequestLine) GetIsOrder() bool {
+	return requestLine.isOrder
+}
+func (requestLine *RequestLine) GetOrder() []string {
+	result := make([]string, 0)
+	if requestLine.order == nil {
+		return result
+	}
+	for data := range requestLine.order {
+		result = append(result, data)
+	}
+	return result
+}
 func (requestLine *RequestLine) SetSource(source string) {
 	requestLine.source = source
 }
 func (requestLine *RequestLine) GetSource() string {
 	return requestLine.source
+}
+
+func NewRequestLine(method string, requestUri *RequestUri, schema string, version float64) *RequestLine {
+	return &RequestLine{
+		method:     method,
+		requestUri: requestUri,
+		schema:     schema,
+		version:    version,
+		isOrder:    false,
+		order:      make(chan string, 1024),
+	}
+}
+func (requestLine *RequestLine) Raw() string {
+	result := ""
+	if requestLine.isOrder {
+		for data := range requestLine.order {
+			result += data
+		}
+		requestLine.isOrder = false
+		result += "\r\n"
+		return result
+	}
+
+	// method:INVITE, ACK,BYE,CANCEL,REGISTER,OPTIONS,INFO etc.
+	if len(strings.TrimSpace(requestLine.method)) > 0 {
+		result += strings.ToUpper(requestLine.method)
+	}
+	// SIP-URI/SIPS-URI
+	if requestLine.requestUri != nil {
+		result += fmt.Sprintf(" %s", requestLine.requestUri.Raw())
+	}
+	// schema: sip,sips,tel etc.
+	if len(strings.TrimSpace(requestLine.schema)) > 0 {
+		result += fmt.Sprintf(" %s", strings.ToUpper(requestLine.schema))
+	}
+	// version: 2.0
+	result += fmt.Sprintf("/%1.1f", requestLine.version)
+	result += "\r\n"
+	return result
+}
+func (requestLine *RequestLine) Parse(raw string) {
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	if len(strings.TrimSpace(raw)) == 0 {
+		return
+	}
+	// method regexp string
+	methodsRegexpStr := `^(?i)(`
+	for _, v := range methods {
+		methodsRegexpStr += v + "|"
+	}
+	methodsRegexpStr = strings.TrimSuffix(methodsRegexpStr, "|")
+	methodsRegexpStr += ")( )?"
+	// method regexp
+	methodRegexp := regexp.MustCompile(methodsRegexpStr)
+
+	// schema regexp string
+	schemasRegexpStr := `( )?(?i)(`
+	for _, v := range schemas {
+		schemasRegexpStr += v + "|"
+	}
+	schemasRegexpStr = strings.TrimSuffix(schemasRegexpStr, "|")
+	schemasRegexpStr += ")( )?"
+	// schema and version regexp
+	schemaAndVersionRegexp := regexp.MustCompile(schemasRegexpStr + `/( )?\d\.\d`)
+
+	if !methodRegexp.MatchString(raw) && !schemaAndVersionRegexp.MatchString(raw) {
+		return
+	}
+	requestLine.source = raw
+	requestLine.requestUri = new(RequestUri)
+	// request-line order
+	requestLine.requestlineOrder(raw)
+	if methodRegexp.MatchString(raw) {
+		method := methodRegexp.FindString(raw)
+		method = stringTrimPrefixAndTrimSuffix(method, " ")
+		requestLine.method = method
+		raw = strings.TrimPrefix(raw, method)
+	}
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	// schema regexp
+	schemaRegexp := regexp.MustCompile(schemasRegexpStr)
+	// version regexp
+	versionRegexp := regexp.MustCompile(`\d\.[0-9]{1}`)
+	if schemaAndVersionRegexp.MatchString(raw) {
+		schemaAndVersion := schemaAndVersionRegexp.FindString(raw)
+		schemaAndVersion = stringTrimPrefixAndTrimSuffix(schemaAndVersion, " ")
+		if schemaRegexp.MatchString(schemaAndVersion) {
+			schema := schemaRegexp.FindString(schemaAndVersion)
+			schema = stringTrimPrefixAndTrimSuffix(schema, " ")
+			requestLine.schema = schema
+		}
+		if versionRegexp.MatchString(schemaAndVersion) {
+			versions := versionRegexp.Find([]byte(schemaAndVersion))
+			version, _ := strconv.ParseFloat(string(versions), 64)
+			requestLine.version = version
+		}
+		raw = strings.ReplaceAll(raw, schemaAndVersion, "")
+	}
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	if len(strings.TrimSpace(raw)) > 0 {
+
+		requestLine.requestUri.Parse(raw)
+	}
+}
+func (requestLine *RequestLine) requestlineOrder(raw string) {
+	if requestLine.order == nil {
+		requestLine.order = make(chan string, 1024)
+	}
+	requestLine.isOrder = true
+	defer close(requestLine.order)
+	requestLine.order <- raw
 }

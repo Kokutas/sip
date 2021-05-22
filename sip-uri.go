@@ -145,38 +145,39 @@ func (sipUri *SipUri) Raw() string {
 		for data := range sipUri.order {
 			result += data
 		}
-	} else {
-		if len(strings.TrimSpace(sipUri.schema)) == 0 {
-			sipUri.schema = "sip"
-		}
-		result += fmt.Sprintf("%s:", strings.ToLower(sipUri.schema))
-		if sipUri.userinfo != nil {
-			result += sipUri.userinfo.Raw()
-		}
-		if sipUri.hostport != nil {
-			result += fmt.Sprintf("@%s", sipUri.hostport.Raw())
-		}
-		if sipUri.uriparameters != nil {
-			result += sipUri.uriparameters.Raw()
-		}
-		headers := ""
-		sipUri.headers.Range(func(key, value interface{}) bool {
-			if reflect.ValueOf(value).IsValid() {
-				if reflect.ValueOf(value).IsZero() {
-					headers += fmt.Sprintf("&%v", key)
-					return true
-				}
-				headers += fmt.Sprintf("&%v=%v", key, value)
+		sipUri.isOrder = false
+		return result
+	}
+	if len(strings.TrimSpace(sipUri.schema)) == 0 {
+		sipUri.schema = "sip"
+	}
+	result += fmt.Sprintf("%s:", strings.ToLower(sipUri.schema))
+	if sipUri.userinfo != nil {
+		result += sipUri.userinfo.Raw()
+	}
+	if sipUri.hostport != nil {
+		result += fmt.Sprintf("@%s", sipUri.hostport.Raw())
+	}
+	if sipUri.uriparameters != nil {
+		result += sipUri.uriparameters.Raw()
+	}
+	headers := ""
+	sipUri.headers.Range(func(key, value interface{}) bool {
+		if reflect.ValueOf(value).IsValid() {
+			if reflect.ValueOf(value).IsZero() {
+				headers += fmt.Sprintf("&%v", key)
 				return true
 			}
-			headers += fmt.Sprintf("&%v", key)
+			headers += fmt.Sprintf("&%v=%v", key, value)
 			return true
-		})
-		headers = stringTrimPrefixAndTrimSuffix(headers, "&")
-		if len(headers) > 0 {
-
-			result += fmt.Sprintf("?%s", headers)
 		}
+		headers += fmt.Sprintf("&%v", key)
+		return true
+	})
+	headers = stringTrimPrefixAndTrimSuffix(headers, "&")
+	if len(headers) > 0 {
+
+		result += fmt.Sprintf("?%s", headers)
 	}
 	return result
 }
@@ -364,16 +365,17 @@ func (userInfo *UserInfo) Raw() string {
 		for data := range userInfo.order {
 			result += data
 		}
-	} else {
-		switch {
-		case len(strings.TrimSpace(userInfo.user)) > 0:
-			result += userInfo.user
-		case len(strings.TrimSpace(userInfo.telephoneSubscriber)) > 0:
-			result += userInfo.telephoneSubscriber
-		}
-		if len(strings.TrimSpace(userInfo.password)) > 0 {
-			result += fmt.Sprintf(":%s", userInfo.password)
-		}
+		userInfo.isOrder = false
+		return result
+	}
+	switch {
+	case len(strings.TrimSpace(userInfo.user)) > 0:
+		result += userInfo.user
+	case len(strings.TrimSpace(userInfo.telephoneSubscriber)) > 0:
+		result += userInfo.telephoneSubscriber
+	}
+	if len(strings.TrimSpace(userInfo.password)) > 0 {
+		result += fmt.Sprintf(":%s", userInfo.password)
 	}
 	return result
 }
@@ -503,18 +505,19 @@ func (hostport *HostPort) Raw() string {
 		for data := range hostport.order {
 			result += data
 		}
-	} else {
-		switch {
-		case len(strings.TrimSpace(hostport.hostname)) > 0:
-			result += hostport.hostname
-		case hostport.ipv4Address != nil:
-			result += hostport.ipv4Address.String()
-		case hostport.ipv6Reference != nil:
-			result += fmt.Sprintf("["+"%s"+"]", hostport.ipv6Reference.String())
-		}
-		if hostport.port > 0 {
-			result += fmt.Sprintf(":%d", hostport.port)
-		}
+		hostport.isOrder = false
+		return result
+	}
+	switch {
+	case len(strings.TrimSpace(hostport.hostname)) > 0:
+		result += hostport.hostname
+	case hostport.ipv4Address != nil:
+		result += hostport.ipv4Address.String()
+	case hostport.ipv6Reference != nil:
+		result += fmt.Sprintf("["+"%s"+"]", hostport.ipv6Reference.String())
+	}
+	if hostport.port > 0 {
+		result += fmt.Sprintf(":%d", hostport.port)
 	}
 	return result
 }
@@ -686,45 +689,46 @@ func (uriParameters *UriParameters) Raw() string {
 		for data := range uriParameters.order {
 			result += fmt.Sprintf(";%s", data)
 		}
-	} else {
-		// transport-param = "transport="( "udp" / "tcp" / "sctp" / "tls"/ other-transport),other-transport = token
-		if len(strings.TrimSpace(uriParameters.transport)) > 0 {
-			result += fmt.Sprintf(";transport=%s", strings.ToLower(uriParameters.transport))
-		}
-		// user-param =  "user=" ( "phone" / "ip" / other-user), other-user = token
-		if len(strings.TrimSpace(uriParameters.user)) > 0 {
-			result += fmt.Sprintf(";user=%s", uriParameters.user)
-		}
-		// method-param =  "method=" Method
-		if len(strings.TrimSpace(uriParameters.method)) > 0 {
-			result += fmt.Sprintf(";method=%s", uriParameters.method)
-		}
-		// ttl-param =  "ttl=" ttl
-		if uriParameters.ttl > 0 {
-			result += fmt.Sprintf(";ttl=%d", uriParameters.ttl)
-		}
-		// maddr-param       =  "maddr=" host
-		if len(strings.TrimSpace(uriParameters.maddr)) > 0 {
-			result += fmt.Sprintf(";maddr=%s", uriParameters.maddr)
-		}
-		// lr-param          =  "lr"
-		if uriParameters.lr {
-			result += ";lr"
-		}
-		// other     sync.Map
-		uriParameters.other.Range(func(key, value interface{}) bool {
-			if reflect.ValueOf(value).IsValid() {
-				if reflect.ValueOf(value).IsZero() {
-					result += fmt.Sprintf(";%v", key)
-					return true
-				}
-				result += fmt.Sprintf(";%v=%v", key, value)
+		uriParameters.isOrder = false
+		return result
+	}
+	// transport-param = "transport="( "udp" / "tcp" / "sctp" / "tls"/ other-transport),other-transport = token
+	if len(strings.TrimSpace(uriParameters.transport)) > 0 {
+		result += fmt.Sprintf(";transport=%s", strings.ToLower(uriParameters.transport))
+	}
+	// user-param =  "user=" ( "phone" / "ip" / other-user), other-user = token
+	if len(strings.TrimSpace(uriParameters.user)) > 0 {
+		result += fmt.Sprintf(";user=%s", uriParameters.user)
+	}
+	// method-param =  "method=" Method
+	if len(strings.TrimSpace(uriParameters.method)) > 0 {
+		result += fmt.Sprintf(";method=%s", uriParameters.method)
+	}
+	// ttl-param =  "ttl=" ttl
+	if uriParameters.ttl > 0 {
+		result += fmt.Sprintf(";ttl=%d", uriParameters.ttl)
+	}
+	// maddr-param       =  "maddr=" host
+	if len(strings.TrimSpace(uriParameters.maddr)) > 0 {
+		result += fmt.Sprintf(";maddr=%s", uriParameters.maddr)
+	}
+	// lr-param          =  "lr"
+	if uriParameters.lr {
+		result += ";lr"
+	}
+	// other     sync.Map
+	uriParameters.other.Range(func(key, value interface{}) bool {
+		if reflect.ValueOf(value).IsValid() {
+			if reflect.ValueOf(value).IsZero() {
+				result += fmt.Sprintf(";%v", key)
 				return true
 			}
-			result += fmt.Sprintf(";%v", key)
+			result += fmt.Sprintf(";%v=%v", key, value)
 			return true
-		})
-	}
+		}
+		result += fmt.Sprintf(";%v", key)
+		return true
+	})
 	return result
 }
 func (uriParameters *UriParameters) Parse(raw string) {
@@ -779,7 +783,7 @@ func (uriParameters *UriParameters) Parse(raw string) {
 			method = regexp.MustCompile(`.*=`).ReplaceAllString(method, "")
 			method = stringTrimPrefixAndTrimSuffix(method, " ")
 			if len(method) > 0 {
-				uriParameters.user = method
+				uriParameters.method = method
 			}
 		case ttlRegexp.MatchString(raws):
 			ttlStr := regexp.MustCompile(`(?i)(ttl)`).ReplaceAllString(raws, "")

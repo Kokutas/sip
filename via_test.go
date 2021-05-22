@@ -29,6 +29,7 @@ func TestVia_Parse(t *testing.T) {
 		v := new(Via)
 		v.Parse(raw)
 		if len(v.source) > 0 {
+			fmt.Println(v.version)
 			fmt.Print(v.Raw())
 		}
 

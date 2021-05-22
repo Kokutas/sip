@@ -103,7 +103,30 @@ package sip
 
 // Request-URI    =  SIP-URI / SIPS-URI / absoluteURI
 type RequestUri struct {
-	// sipUri
-	// sipsUri
-	// aba
+	sipUri *SipUri // SIP-URI / SIPS-URI
+	// absoluteURI *AbsoluteURI
+}
+
+func (requestUri *RequestUri) SetSipUri(sipUri *SipUri) {
+	requestUri.sipUri = sipUri
+}
+func (requestUri *RequestUri) GetSipUri() *SipUri {
+	return requestUri.sipUri
+}
+func NewRequestUri(sipUri *SipUri) *RequestUri {
+	return &RequestUri{
+		sipUri: sipUri,
+	}
+}
+func (requestUri *RequestUri) Raw() string {
+	if requestUri.sipUri == nil {
+		requestUri.sipUri = new(SipUri)
+	}
+	return requestUri.sipUri.Raw()
+}
+func (requestUri *RequestUri) Parse(raw string) {
+	if requestUri.sipUri == nil {
+		requestUri.sipUri = new(SipUri)
+	}
+	requestUri.sipUri.Parse(raw)
 }

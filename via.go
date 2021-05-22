@@ -465,7 +465,8 @@ func (v *Via) Parse(raw string) {
 	// version regexp
 	versionRegexp := regexp.MustCompile(`/( )*\d+\.\d+`)
 	if versionRegexp.MatchString(raw) {
-		versions := versionRegexp.FindString(raw)
+		versionByte := versionRegexp.Find([]byte(raw))
+		versions := string(versionByte)
 		raw = regexp.MustCompile(`.*`+versions).ReplaceAllString(raw, "")
 		versions = regexp.MustCompile(`.*/`).ReplaceAllString(versions, "")
 		versions = stringTrimPrefixAndTrimSuffix(versions, " ")
