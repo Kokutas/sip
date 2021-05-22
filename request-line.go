@@ -115,7 +115,7 @@ type RequestLine struct {
 	version    float64     // 2.0
 	isOrder    bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
 	order      chan string // It is convenient to record the order of the original parameter fields when parsing
-	source     string      // userinfo source string
+	source     string      // request-line source string
 }
 
 func (requestLine *RequestLine) SetMethod(method string) {
