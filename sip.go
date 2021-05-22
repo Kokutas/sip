@@ -1,6 +1,8 @@
 package sip
 
-import "strings"
+import (
+	"strings"
+)
 
 const (
 	sip  = "sip"
@@ -26,3 +28,16 @@ func stringTrimPrefixAndTrimSuffix(source string, sub string) string {
 	}
 	return source
 }
+
+// type generic struct {
+// 	index int // order
+// 	kv    map[int]map[string]interface{}
+// 	gk    sync.RWMutex
+// }
+
+// func (g *generic) store(k string, v interface{}) {
+// 	g.gk.Lock()
+// 	defer g.gk.Unlock()
+// 	g.index++
+// 	g.kv[g.index] = map[string]interface{}{k: v}
+// }
