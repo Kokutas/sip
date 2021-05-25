@@ -310,14 +310,16 @@ func (au *Authorization) Raw() (result strings.Builder) {
 	if len(strings.TrimSpace(au.field)) == 0 {
 		au.field = "Authorization"
 		result.WriteString(fmt.Sprintf("%s:", strings.Title(au.field)))
+	} else {
+		result.WriteString(fmt.Sprintf("%s:", au.field))
 	}
-	result.WriteString(fmt.Sprintf("%s:", au.field))
 	// auth-schema: Basic / Digest
 	if len(strings.TrimSpace(au.authSchema)) == 0 {
 		au.authSchema = "Digest"
 		result.WriteString(fmt.Sprintf(" %s", strings.Title(au.authSchema)))
+	} else {
+		result.WriteString(fmt.Sprintf(" %s", au.authSchema))
 	}
-	result.WriteString(fmt.Sprintf(" %s", au.authSchema))
 
 	if au.isOrder {
 		au.isOrder = false

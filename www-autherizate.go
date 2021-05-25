@@ -1,6 +1,8 @@
 package sip
 
 import (
+	"fmt"
+	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -176,6 +178,151 @@ func NewWWWAuthenticate(realm string, domain string, nonce string, opaque string
 	}
 }
 func (wa *WWWAuthenticate) Raw() (result strings.Builder) {
+
+	//  "WWW-Authenticate"
+	if len(strings.TrimSpace(wa.field)) == 0 {
+		wa.field = "WWW-Authenticate"
+		result.WriteString(fmt.Sprintf("%s:", strings.Title(wa.field)))
+	} else {
+		result.WriteString(fmt.Sprintf("%s:", wa.field))
+	}
+	// auth-schema: Basic / Digest
+	if len(strings.TrimSpace(wa.authSchema)) == 0 {
+		wa.authSchema = "Digest"
+		result.WriteString(fmt.Sprintf(" %s", strings.Title(wa.authSchema)))
+	} else {
+		result.WriteString(fmt.Sprintf(" %s", wa.authSchema))
+	}
+	if wa.isOrder {
+		wa.isOrder = false
+		for orders := range wa.order {
+			if regexp.MustCompile(`((?i)(realm))( )*=`).MatchString(orders) {
+				// realm = "realm" EQUAL realm-value,realm-value = quoted-string
+				if len(strings.TrimSpace(wa.realm)) > 0 {
+					result.WriteString(fmt.Sprintf(" realm=\"%s\",", wa.realm))
+					continue
+				}
+			}
+			if regexp.MustCompile(`((?i)(domain))( )*=`).MatchString(orders) {
+				// domain =  "domain" EQUAL LDQUOT URI,*( 1*SP URI ) RDQUOT, URI =  absoluteURI / abs-path
+				if len(strings.TrimSpace(wa.domain)) > 0 {
+					result.WriteString(fmt.Sprintf(" domain=\"%s\",", wa.domain))
+					continue
+				}
+			}
+			if regexp.MustCompile(`((?i)(nonce))( )*=`).MatchString(orders) {
+				// nonce = "nonce" EQUAL nonce-value,nonce-value = quoted-string
+				if len(strings.TrimSpace(wa.nonce)) > 0 {
+					result.WriteString(fmt.Sprintf(" nonce=\"%s\",", wa.nonce))
+				}
+				continue
+			}
+			if regexp.MustCompile(`((?i)(opaque))( )*=`).MatchString(orders) {
+				// opaque =  "opaque" EQUAL quoted-string
+				if len(strings.TrimSpace(wa.opaque)) > 0 {
+					result.WriteString(fmt.Sprintf(" opaque=\"%s\",", wa.opaque))
+				}
+				continue
+			}
+			if regexp.MustCompile(`((?i)(stale))( )*=`).MatchString(orders) {
+				// stale =  "stale" EQUAL ( "true" / "false" )
+				if wa.stale {
+					result.WriteString(fmt.Sprintf(" stale=\"%v\",", wa.stale))
+				}
+				continue
+			}
+
+			if regexp.MustCompile(`((?i)(algorithm))( )*=`).MatchString(orders) {
+				// algorithm = "algorithm" EQUAL ( "MD5" / "MD5-sess"/ token )
+				if len(strings.TrimSpace(wa.algorithm)) > 0 {
+					result.WriteString(fmt.Sprintf(" algorithm=%s,", wa.algorithm))
+				}
+				continue
+			}
+			if regexp.MustCompile(`((?i)(qop))( )*=`).MatchString(orders) {
+				// qop-options =  "qop" EQUAL LDQUOT qop-value,*("," qop-value) RDQUOT,qop-value =  "auth" / "auth-int" / token
+				if len(strings.TrimSpace(wa.qop)) > 0 {
+					result.WriteString(fmt.Sprintf(" qop=%s,", wa.qop))
+				}
+				continue
+			}
+			ordersSlice := strings.Split(orders, "=")
+			if len(ordersSlice) == 1 {
+				if val, ok := wa.authParam.LoadAndDelete(ordersSlice[0]); ok {
+					if len(strings.TrimSpace(fmt.Sprintf("%v", val))) > 0 {
+						result.WriteString(fmt.Sprintf("  %v=\"%v\",", ordersSlice[0], val))
+					} else {
+						result.WriteString(fmt.Sprintf(" %v,", ordersSlice[0]))
+					}
+				} else {
+					result.WriteString(fmt.Sprintf(" %v,", ordersSlice[0]))
+				}
+			} else {
+				if val, ok := wa.authParam.LoadAndDelete(ordersSlice[0]); ok {
+					if len(strings.TrimSpace(fmt.Sprintf("%v", val))) > 0 {
+						result.WriteString(fmt.Sprintf(" %v=\"%v\",", ordersSlice[0], val))
+					} else {
+						result.WriteString(fmt.Sprintf(" %v,", ordersSlice[0]))
+					}
+
+				} else {
+					if len(strings.TrimSpace(fmt.Sprintf("%v", ordersSlice[1]))) > 0 {
+						result.WriteString(fmt.Sprintf("  %v=\"%v\",", ordersSlice[0], ordersSlice[1]))
+					} else {
+						result.WriteString(fmt.Sprintf(" %v,", ordersSlice[0]))
+					}
+				}
+			}
+		}
+
+	} else {
+		// realm = "realm" EQUAL realm-value,realm-value = quoted-string
+		if len(strings.TrimSpace(wa.realm)) > 0 {
+			result.WriteString(fmt.Sprintf(" realm=\"%s\",", wa.realm))
+		}
+		// domain =  "domain" EQUAL LDQUOT URI,*( 1*SP URI ) RDQUOT, URI =  absoluteURI / abs-path
+		if len(strings.TrimSpace(wa.domain)) > 0 {
+			result.WriteString(fmt.Sprintf(" domain=\"%s\",", wa.domain))
+		}
+		// nonce = "nonce" EQUAL nonce-value,nonce-value = quoted-string
+		if len(strings.TrimSpace(wa.nonce)) > 0 {
+			result.WriteString(fmt.Sprintf(" nonce=\"%s\",", wa.nonce))
+		}
+		// opaque =  "opaque" EQUAL quoted-string
+		if len(strings.TrimSpace(wa.opaque)) > 0 {
+			result.WriteString(fmt.Sprintf(" opaque=\"%s\",", wa.opaque))
+		}
+		// stale =  "stale" EQUAL ( "true" / "false" )
+		if wa.stale {
+			result.WriteString(fmt.Sprintf(" stale=\"%v\",", wa.stale))
+		}
+		// algorithm = "algorithm" EQUAL ( "MD5" / "MD5-sess"/ token )
+		if len(strings.TrimSpace(wa.algorithm)) > 0 {
+			result.WriteString(fmt.Sprintf(" algorithm=%s,", wa.algorithm))
+		}
+		// qop-options =  "qop" EQUAL LDQUOT qop-value,*("," qop-value) RDQUOT,qop-value =  "auth" / "auth-int" / token
+		if len(strings.TrimSpace(wa.qop)) > 0 {
+			result.WriteString(fmt.Sprintf(" qop=%s,", wa.qop))
+		}
+	}
+	// auth-param = auth-param-name EQUAL ( token / quoted-string ),auth-param-name = token
+	wa.authParam.Range(func(key, value interface{}) bool {
+		if reflect.ValueOf(value).IsValid() {
+			if reflect.ValueOf(value).IsZero() {
+				result.WriteString(fmt.Sprintf(" %v,", key))
+				return true
+			}
+			result.WriteString(fmt.Sprintf(" %v=\"%v\",", key, value))
+			return true
+		}
+		result.WriteString(fmt.Sprintf(" %v,", key))
+		return true
+	})
+	temp := result.String()
+	temp = strings.TrimSuffix(temp, ",")
+	result.Reset()
+	result.WriteString(temp)
+	result.WriteString("\r\n")
 	return
 }
 func (wa *WWWAuthenticate) Parse(raw string) {
@@ -185,5 +332,10 @@ func (wa *WWWAuthenticate) wwwAuthenticateOrder(raw string) {
 	wa.isOrder = true
 	wa.order = make(chan string, 1024)
 	defer close(wa.order)
-
+	raw = stringTrimPrefixAndTrimSuffix(raw, ",")
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	rawSlice := strings.Split(raw, ",")
+	for _, raws := range rawSlice {
+		wa.order <- raws
+	}
 }
