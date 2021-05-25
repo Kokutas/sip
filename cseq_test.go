@@ -7,7 +7,8 @@ import (
 
 func TestCSeq_Raw(t *testing.T) {
 	cseq := NewCSeq(0, "register")
-	fmt.Print(cseq.Raw())
+	result := cseq.Raw()
+	fmt.Print(result.String())
 }
 
 func TestCSeq_Parse(t *testing.T) {
@@ -21,8 +22,12 @@ func TestCSeq_Parse(t *testing.T) {
 		cseq.Parse(raw)
 		if len(cseq.GetSource()) > 0 {
 			fmt.Println(cseq.GetField(), cseq.GetNumber(), cseq.GetMethod())
-			fmt.Print(cseq.Raw())
+			num := cseq.GetNumber()
+			num++
+			cseq.SetNumber(num)
+			result := cseq.Raw()
+			fmt.Print(result.String())
 		}
-
 	}
+
 }

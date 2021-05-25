@@ -12,7 +12,8 @@ func TestContentType_Raw(t *testing.T) {
 	parameter.Store("micalg", "sha1")
 	parameter.Store("boundary", "boundary42")
 	c := NewContentType("multipart", "signed", parameter)
-	fmt.Print(c.Raw())
+	result := c.Raw()
+	fmt.Println(result.String())
 }
 
 func TestContentType_Parse(t *testing.T) {
@@ -26,12 +27,15 @@ func TestContentType_Parse(t *testing.T) {
 		c.Parse(raw)
 		if len(c.GetSource()) > 0 {
 			fmt.Print("index: ", index, ",field: ", c.GetField(), ",m-type: ", c.GetMType(), ",m-subtype: ", c.GetMSubType())
-			c.parameter.Range(func(key, value interface{}) bool {
+			parameter := c.GetParameter()
+			parameter.Range(func(key, value interface{}) bool {
 				fmt.Print(" ;", key, "=", value)
 				return true
 			})
 			fmt.Println()
-			fmt.Print(c.Raw())
+			parameter.Store("protocol", "hello/world")
+			result := c.Raw()
+			fmt.Println(index, result.String())
 		}
 	}
 }

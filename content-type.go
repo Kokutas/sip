@@ -99,50 +99,67 @@ func NewContentType(mType string, mSubType string, parameter sync.Map) *ContentT
 		isOrder:   false,
 	}
 }
-func (c *ContentType) Raw() string {
-	result := ""
-	if c.isOrder {
-		for data := range c.order {
-			result += data
-		}
-		c.isOrder = false
-		result += "\r\n"
-		return result
-	}
+func (c *ContentType) Raw() (result strings.Builder) {
+
 	if len(strings.TrimSpace(c.field)) == 0 {
 		c.field = "Content-Type"
 	}
-	result += fmt.Sprintf("%s:", c.field)
+	result.WriteString(fmt.Sprintf("%s:", c.field))
 
 	if len(strings.TrimSpace(c.mType)) > 0 {
-		result += fmt.Sprintf(" %s", c.mType)
+		result.WriteString(fmt.Sprintf(" %s", c.mType))
 	}
 	if len(strings.TrimSpace(c.mSubType)) > 0 {
-		if len(result) > 0 {
-			result += fmt.Sprintf("/%s", c.mSubType)
+		if len(result.String()) > 0 {
+			result.WriteString(fmt.Sprintf("/%s", c.mSubType))
 		} else {
-			result += fmt.Sprintf(" %s", c.mSubType)
+			result.WriteString(fmt.Sprintf(" %s", c.mSubType))
+		}
+	}
+	if c.isOrder {
+		for orders := range c.order {
+			ordersSlice := strings.Split(orders, "=")
+			if len(ordersSlice) == 1 {
+				if val, ok := c.parameter.LoadAndDelete(ordersSlice[0]); ok {
+					if strings.Contains(fmt.Sprintf("%v", val), "/") {
+						result.WriteString(fmt.Sprintf(";%v=\"%v\"", ordersSlice[0], val))
+					} else {
+						result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], val))
+					}
+				} else {
+					result.WriteString(fmt.Sprintf(";%v", ordersSlice[0]))
+				}
+			} else {
+				if val, ok := c.parameter.LoadAndDelete(ordersSlice[0]); ok {
+					if strings.Contains(fmt.Sprintf("%v", val), "/") {
+						result.WriteString(fmt.Sprintf(";%v=\"%v\"", ordersSlice[0], val))
+					} else {
+						result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], val))
+					}
+				} else {
+					result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], ordersSlice[1]))
+				}
+			}
 		}
 	}
 	c.parameter.Range(func(key, value interface{}) bool {
 		if reflect.ValueOf(value).IsValid() {
 			if reflect.ValueOf(value).IsZero() {
-				result += fmt.Sprintf(";%v", key)
+				result.WriteString(fmt.Sprintf(";%v", key))
 				return true
 			}
 			if strings.Contains(fmt.Sprintf("%v", value), "/") {
-				result += fmt.Sprintf(";%v=\"%v\"", key, value)
+				result.WriteString(fmt.Sprintf(";%v=\"%v\"", key, value))
 			} else {
-				result += fmt.Sprintf(";%v=%v", key, value)
+				result.WriteString(fmt.Sprintf(";%v=%v", key, value))
 			}
 			return true
 		}
-		result += fmt.Sprintf(";%v", key)
+		result.WriteString(fmt.Sprintf(";%v", key))
 		return true
 	})
-	result = strings.TrimSuffix(result, ";")
-	result += "\r\n"
-	return result
+	result.WriteString("\r\n")
+	return
 }
 func (c *ContentType) Parse(raw string) {
 	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
@@ -158,8 +175,7 @@ func (c *ContentType) Parse(raw string) {
 	}
 	c.source = raw
 	c.parameter = sync.Map{}
-	// content-type order
-	c.contenttypeOrder(raw)
+
 	field := fieldRegexp.FindString(raw)
 	field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
 	field = stringTrimPrefixAndTrimSuffix(field, " ")
@@ -171,6 +187,8 @@ func (c *ContentType) Parse(raw string) {
 	// parameter regexp
 	parameterRegexp := regexp.MustCompile(`;.*`)
 	if parameterRegexp.MatchString(raw) {
+		// content-type order
+		c.contenttypeOrder(parameterRegexp.FindString(raw))
 		rawSlice := strings.Split(parameterRegexp.FindString(raw), ";")
 		for _, raws := range rawSlice {
 			raws = stringTrimPrefixAndTrimSuffix(raws, " ")
@@ -204,9 +222,14 @@ func (c *ContentType) Parse(raw string) {
 		}
 	}
 }
+
 func (c *ContentType) contenttypeOrder(raw string) {
-	c.order = make(chan string, 1024)
 	c.isOrder = true
+	c.order = make(chan string, 1024)
 	defer close(c.order)
-	c.order <- raw
+	raw = stringTrimPrefixAndTrimSuffix(raw, ";")
+	rawSlice := strings.Split(raw, ";")
+	for _, raws := range rawSlice {
+		c.order <- raws
+	}
 }

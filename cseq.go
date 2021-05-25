@@ -46,12 +46,10 @@ import (
 // CSeq  =  "CSeq" HCOLON 1*DIGIT LWS Method
 
 type CSeq struct {
-	field   string      // "CSeq"
-	number  uint32      // sequence number
-	method  string      // method
-	isOrder bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
-	order   chan string // It is convenient to record the order of the original parameter fields when parsing
-	source  string      // source string
+	field  string // "CSeq"
+	number uint32 // sequence number
+	method string // method
+	source string // source string
 }
 
 func (cSeq *CSeq) SetField(field string) {
@@ -81,33 +79,25 @@ func (cSeq *CSeq) GetSource() string {
 }
 func NewCSeq(number uint32, method string) *CSeq {
 	return &CSeq{
-		field:   "CSeq",
-		number:  number,
-		method:  method,
-		isOrder: false,
+		field:  "CSeq",
+		number: number,
+		method: method,
 	}
 }
-func (cSeq *CSeq) Raw() string {
-	result := ""
-	if cSeq.isOrder {
-		for data := range cSeq.order {
-			result += data
-		}
-		cSeq.isOrder = false
-		result += "\r\n"
-		return result
-	}
+
+func (cSeq *CSeq) Raw() (result strings.Builder) {
 	if len(strings.TrimSpace(cSeq.field)) == 0 {
 		cSeq.field = "CSeq"
 	}
-	result += fmt.Sprintf("%s:", cSeq.field)
-	result += fmt.Sprintf(" %d", cSeq.number)
+	result.WriteString(fmt.Sprintf("%s:", cSeq.field))
+	result.WriteString(fmt.Sprintf(" %d", cSeq.number))
 	if len(strings.TrimSpace(cSeq.method)) > 0 {
-		result += fmt.Sprintf(" %s", strings.ToUpper(cSeq.method))
+		result.WriteString(fmt.Sprintf(" %s", strings.ToUpper(cSeq.method)))
 	}
-	result += "\r\n"
-	return result
+	result.WriteString("\r\n")
+	return
 }
+
 func (cSeq *CSeq) Parse(raw string) {
 	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
 	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
@@ -122,8 +112,6 @@ func (cSeq *CSeq) Parse(raw string) {
 	}
 	cSeq.field = regexp.MustCompile(`:`).ReplaceAllString(fieldRegexp.FindString(raw), "")
 	cSeq.source = raw
-	// cseq order
-	cSeq.cseqOrder(raw)
 	raw = fieldRegexp.ReplaceAllString(raw, "")
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
 	// sequence number regexp
@@ -153,10 +141,4 @@ func (cSeq *CSeq) Parse(raw string) {
 			cSeq.method = methodRegexp.FindString(raw)
 		}
 	}
-}
-func (cSeq *CSeq) cseqOrder(raw string) {
-	cSeq.order = make(chan string, 1024)
-	cSeq.isOrder = true
-	defer close(cSeq.order)
-	cSeq.order <- raw
 }
