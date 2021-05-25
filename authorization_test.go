@@ -42,7 +42,8 @@ func TestAuthorization_Raw(t *testing.T) {
 			sync.Map{}),
 	}
 	for _, authorization := range authorizations {
-		fmt.Print(authorization.Raw())
+		result := authorization.Raw()
+		fmt.Print(result.String())
 
 	}
 }
@@ -73,6 +74,9 @@ func TestAuthorization_Parse(t *testing.T) {
 				fmt.Println(index, "auth-param:", key, "=", value)
 				return true
 			})
+			authorization.authParam.Store("hello", "www.baidu.com")
+			result := authorization.Raw()
+			fmt.Print(result.String())
 		}
 	}
 }

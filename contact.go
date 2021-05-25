@@ -192,8 +192,11 @@ func NewContact(name, spec, schema, user, host string, port uint16, q string, ex
 func (m *Contact) Raw() (result strings.Builder) {
 	if len(strings.TrimSpace(m.field)) == 0 {
 		m.field = "Contact"
+		result.WriteString(fmt.Sprintf("%s:", strings.Title(m.field)))
+	} else {
+		result.WriteString(fmt.Sprintf("%s:", m.field))
 	}
-	result.WriteString(fmt.Sprintf("%s:", strings.Title(m.field)))
+
 	if len(strings.TrimSpace(m.name)) > 0 {
 		if strings.Contains(m.name, "\"") {
 			result.WriteString(fmt.Sprintf(" %s", m.name))
@@ -238,6 +241,7 @@ func (m *Contact) Raw() (result strings.Builder) {
 			if regexp.MustCompile(`(?i)(expires)( )*=`).MatchString(orders) {
 				if m.expires >= 0 {
 					result.WriteString(fmt.Sprintf(";expires=%d", m.expires))
+					m.expires = -1
 					continue
 				}
 			}
@@ -255,6 +259,13 @@ func (m *Contact) Raw() (result strings.Builder) {
 					result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], ordersSlice[1]))
 				}
 			}
+		}
+	} else {
+		if len(strings.TrimSpace(m.q)) > 0 {
+			result.WriteString(fmt.Sprintf(";q=%s", m.q))
+		}
+		if m.expires >= 0 {
+			result.WriteString(fmt.Sprintf(";expires=%d", m.expires))
 		}
 	}
 
@@ -289,6 +300,7 @@ func (m *Contact) Parse(raw string) {
 	}
 	m.source = raw
 	m.parameter = sync.Map{}
+	m.expires = -1
 
 	m.field = regexp.MustCompile(`:`).ReplaceAllString(fieldRegexp.FindString(raw), "")
 	raw = fieldRegexp.ReplaceAllString(raw, "")
@@ -391,7 +403,7 @@ func (m *Contact) Parse(raw string) {
 	qRegexp := regexp.MustCompile(`((?i)(?:^q))( )*=`)
 	// expires regexp
 	expiresRegexp := regexp.MustCompile(`((?i)(?:^expires))( )*=`)
-	m.expires = -1
+
 	rawSlice := strings.Split(raw, ";")
 	for _, raws := range rawSlice {
 		raws = stringTrimPrefixAndTrimSuffix(raws, " ")
@@ -426,7 +438,7 @@ func (m *Contact) contactOrder(raw string) {
 	m.order = make(chan string, 1024)
 	defer close(m.order)
 	raw = stringTrimPrefixAndTrimSuffix(raw, ";")
-	raw = stringTrimPrefixAndTrimSuffix(raw, ";")
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
 	rawSlice := strings.Split(raw, ";")
 	for _, raws := range rawSlice {
 		m.order <- raws
