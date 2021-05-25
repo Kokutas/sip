@@ -482,7 +482,7 @@ func (v *Via) Parse(raw string) {
 	if len(strings.TrimSpace(raw)) == 0 {
 		return
 	}
-	// via field regexp
+	// field regexp
 	fieldRegexp := regexp.MustCompile(`^(?i)(via|v)( )*:`)
 	if !fieldRegexp.MatchString(raw) {
 		return
