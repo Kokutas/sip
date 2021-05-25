@@ -79,9 +79,7 @@ type CallID struct {
 	field   string // "Call-ID" / "i"
 	localId string
 	host    string
-	isOrder bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
-	order   chan string // It is convenient to record the order of the original parameter fields when parsing
-	source  string      // source string
+	source  string // source string
 }
 
 func (i *CallID) SetField(field string) {
@@ -116,34 +114,24 @@ func NewCallID(localId string, host string) *CallID {
 		field:   "Call-ID",
 		localId: localId,
 		host:    host,
-		isOrder: false,
 	}
 }
-func (i *CallID) Raw() string {
-	result := ""
-	if i.isOrder {
-		for data := range i.order {
-			result += data
-		}
-		i.isOrder = false
-		result += "\r\n"
-		return result
-	}
+func (i *CallID) Raw() (result strings.Builder) {
 	if len(strings.TrimSpace(i.field)) == 0 {
 		i.field = "Call-ID"
 	}
-	result += fmt.Sprintf("%s:", i.field)
+	result.WriteString(fmt.Sprintf("%s:", i.field))
 	if len(strings.TrimSpace(i.localId)) > 0 {
-		result += fmt.Sprintf(" %s", i.localId)
+		result.WriteString(fmt.Sprintf(" %s", i.localId))
 	}
 	if len(strings.TrimSpace(i.host)) > 0 {
-		if len(result) > 0 {
-			result += fmt.Sprintf("@%s", i.host)
+		if len(result.String()) > 0 {
+			result.WriteString(fmt.Sprintf("@%s", i.host))
 		} else {
-			result += i.host
+			result.WriteString(i.host)
 		}
 	}
-	result += "\r\n"
+	result.WriteString("\r\n")
 	return result
 }
 func (i *CallID) Parse(raw string) {
@@ -159,8 +147,6 @@ func (i *CallID) Parse(raw string) {
 		return
 	}
 	i.source = raw
-	// call-id order
-	i.callidOrder(raw)
 	field := fieldRegexp.FindString(raw)
 	field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
 	field = stringTrimPrefixAndTrimSuffix(field, " ")
@@ -180,10 +166,4 @@ func (i *CallID) Parse(raw string) {
 	if len(strings.TrimSpace(raw)) > 0 {
 		i.localId = raw
 	}
-}
-func (i *CallID) callidOrder(raw string) {
-	i.order = make(chan string, 1024)
-	i.isOrder = true
-	defer close(i.order)
-	i.order <- raw
 }

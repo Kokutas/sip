@@ -190,14 +190,6 @@ func NewContact(name, spec, schema, user, host string, port uint16, q string, ex
 	}
 }
 func (m *Contact) Raw() (result strings.Builder) {
-	// if m.isOrder {
-	// 	for data := range m.order {
-	// 		result += data
-	// 	}
-	// 	m.isOrder = false
-	// 	result += "\r\n"
-	// 	return result
-	// }
 	if len(strings.TrimSpace(m.field)) == 0 {
 		m.field = "Contact"
 	}

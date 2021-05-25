@@ -7,7 +7,8 @@ import (
 
 func TestCallID_Raw(t *testing.T) {
 	callId := NewCallID("abc", "192.168.0.1")
-	fmt.Print(callId.Raw())
+	result := callId.Raw()
+	fmt.Print(result.String())
 }
 
 func TestCallID_Parse(t *testing.T) {
@@ -21,7 +22,8 @@ func TestCallID_Parse(t *testing.T) {
 		callId.Parse(raw)
 		if len(callId.GetSource()) > 0 {
 			fmt.Println(index, callId.GetLocalId(), callId.GetHost())
-			fmt.Print(callId.Raw())
+			result := callId.Raw()
+			fmt.Print(result.String())
 		}
 
 	}
