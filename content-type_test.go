@@ -27,13 +27,15 @@ func TestContentType_Parse(t *testing.T) {
 		c.Parse(raw)
 		if len(c.GetSource()) > 0 {
 			fmt.Print("index: ", index, ",field: ", c.GetField(), ",m-type: ", c.GetMType(), ",m-subtype: ", c.GetMSubType())
-			parameter := c.GetParameter()
-			parameter.Range(func(key, value interface{}) bool {
+			p := c.GetParameter()
+			p.Range(func(key, value interface{}) bool {
 				fmt.Print(" ;", key, "=", value)
 				return true
 			})
 			fmt.Println()
-			parameter.Store("protocol", "hello/world")
+			p.Store("protocol", "hello/world")
+			p.Store("haha", nil)
+			c.SetParameter(p)
 			result := c.Raw()
 			fmt.Println(index, result.String())
 		}

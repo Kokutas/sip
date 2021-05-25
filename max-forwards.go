@@ -52,7 +52,7 @@ import (
 type MaxForwards struct {
 	field    string // "Max-Forwards"
 	forwards uint8  // The Max-Forwards value is an integer in the range 0-255 indicating the remaining number of times this request message is allowed to be forwarded.
-	source   string // max-forwards header line source string
+	source   string // source string
 }
 
 func (maxForwards *MaxForwards) SetField(field string) {
@@ -69,9 +69,6 @@ func (maxForwards *MaxForwards) SetForwards(forwards uint8) {
 func (maxForwards *MaxForwards) GetForwards() uint8 {
 	return maxForwards.forwards
 }
-func (maxForwards *MaxForwards) SetSource(source string) {
-	maxForwards.source = source
-}
 func (maxForwards *MaxForwards) GetSource() string {
 	return maxForwards.source
 }
@@ -80,16 +77,15 @@ func NewMaxForwards(forwards uint8) *MaxForwards {
 		forwards: forwards,
 	}
 }
-func (maxForwards *MaxForwards) Raw() string {
-	result := ""
+func (maxForwards *MaxForwards) Raw() (result strings.Builder) {
 	if len(strings.TrimSpace(maxForwards.field)) > 0 {
-		result += fmt.Sprintf("%s:", maxForwards.field)
+		result.WriteString(fmt.Sprintf("%s:", maxForwards.field))
 	} else {
-		result += "Max-Forwards:"
+		result.WriteString("Max-Forwards:")
 	}
-	result += fmt.Sprintf(" %d", maxForwards.forwards)
-	result += "\r\n"
-	return result
+	result.WriteString(fmt.Sprintf(" %d", maxForwards.forwards))
+	result.WriteString("\r\n")
+	return
 }
 
 func (maxForwards *MaxForwards) Parse(raw string) {

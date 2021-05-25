@@ -38,6 +38,8 @@ type Expires struct {
 func (expires *Expires) SetField(field string) {
 	if regexp.MustCompile(`^(?i)(expires)$`).MatchString(field) {
 		expires.field = strings.Title(field)
+	} else {
+		expires.field = "Expires"
 	}
 }
 func (expires *Expires) GetField() string {
@@ -49,9 +51,6 @@ func (expires *Expires) SetExpire(expire uint32) {
 func (expires *Expires) GetExpire() uint32 {
 	return expires.expire
 }
-func (expires *Expires) SetSource(source string) {
-	expires.source = source
-}
 func (expires *Expires) GetSource() string {
 	return expires.source
 }
@@ -60,15 +59,14 @@ func NewExpires(expire uint32) *Expires {
 		expire: expire,
 	}
 }
-func (expires *Expires) Raw() string {
-	result := ""
+func (expires *Expires) Raw() (result strings.Builder) {
 	if len(strings.TrimSpace(expires.field)) > 0 {
-		result += fmt.Sprintf("%s:", expires.field)
+		result.WriteString(fmt.Sprintf("%s:", expires.field))
 	} else {
-		result += fmt.Sprintf("%s:", strings.Title("expires"))
+		result.WriteString(fmt.Sprintf("%s:", strings.Title("expires")))
 	}
-	result += fmt.Sprintf(" %d", expires.expire)
-	result += "\r\n"
+	result.WriteString(fmt.Sprintf(" %d", expires.expire))
+	result.WriteString("\r\n")
 	return result
 }
 func (expires *Expires) Parse(raw string) {

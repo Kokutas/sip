@@ -13,7 +13,8 @@ func TestDate_Raw(t *testing.T) {
 		NewDate("2006-01-02T15:04:05.000", time.Now()),
 	}
 	for _, date := range dates {
-		fmt.Print(date.Raw())
+		result := date.Raw()
+		fmt.Print(result.String())
 	}
 }
 
@@ -29,7 +30,8 @@ func TestDate_Parse(t *testing.T) {
 		date := new(Date)
 		date.Parse(raw)
 		if len(date.GetSource()) > 0 {
-			fmt.Print(index, " ", date.Raw())
+			result := date.Raw()
+			fmt.Print(index, " ", result.String())
 			fmt.Println(index, "field", date.GetField(), ",format:", date.GetTimeFormat(), "time:", date.GetSipDate())
 		}
 	}

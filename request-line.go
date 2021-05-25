@@ -109,100 +109,70 @@ import (
 // o  the default reason phrase for that response code, if
 //    applicable;
 type RequestLine struct {
-	method     string      // method:INVITE, ACK,BYE,CANCEL,REGISTER,OPTIONS,INFO etc.
-	requestUri *RequestUri // SIP-URI/SIPS-URI
-	schema     string      // sip,sips,tel etc.
-	version    float64     // 2.0
-	isOrder    bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
-	order      chan string // It is convenient to record the order of the original parameter fields when parsing
-	source     string      // request-line source string
+	method  string      // method:INVITE, ACK,BYE,CANCEL,REGISTER,OPTIONS,INFO etc.
+	uri     *RequestUri // SIP-URI/SIPS-URI
+	schema  string      // sip,sips,tel etc.
+	version float64     // 2.0
+	source  string      // source string
 }
 
-func (requestLine *RequestLine) SetMethod(method string) {
-	requestLine.method = method
+func (rl *RequestLine) SetMethod(method string) {
+	rl.method = method
 }
-func (requestLine *RequestLine) GetMethod() string {
-	return requestLine.method
+func (rl *RequestLine) GetMethod() string {
+	return rl.method
 }
-func (requestLine *RequestLine) SetRequestUri(requestUri *RequestUri) {
-	requestLine.requestUri = requestUri
+func (rl *RequestLine) SetUri(uri *RequestUri) {
+	rl.uri = uri
 }
-func (requestLine *RequestLine) GetRequestUri() *RequestUri {
-	return requestLine.requestUri
-}
-
-func (requestLine *RequestLine) SetSchema(schema string) {
-	requestLine.schema = schema
-}
-func (requestLine *RequestLine) GetSchema() string {
-	return requestLine.schema
-}
-func (requestLine *RequestLine) SetVersion(version float64) {
-	requestLine.version = version
-}
-func (requestLine *RequestLine) GetVersion() float64 {
-	return requestLine.version
-}
-func (requestLine *RequestLine) GetIsOrder() bool {
-	return requestLine.isOrder
-}
-func (requestLine *RequestLine) GetOrder() []string {
-	result := make([]string, 0)
-	if requestLine.order == nil {
-		return result
-	}
-	for data := range requestLine.order {
-		result = append(result, data)
-	}
-	return result
-}
-func (requestLine *RequestLine) SetSource(source string) {
-	requestLine.source = source
-}
-func (requestLine *RequestLine) GetSource() string {
-	return requestLine.source
+func (rl *RequestLine) GetUri() *RequestUri {
+	return rl.uri
 }
 
-func NewRequestLine(method string, requestUri *RequestUri, schema string, version float64) *RequestLine {
+func (rl *RequestLine) SetSchema(schema string) {
+	rl.schema = schema
+}
+func (rl *RequestLine) GetSchema() string {
+	return rl.schema
+}
+func (rl *RequestLine) SetVersion(version float64) {
+	rl.version = version
+}
+func (rl *RequestLine) GetVersion() float64 {
+	return rl.version
+}
+func (rl *RequestLine) GetSource() string {
+	return rl.source
+}
+
+func NewRequestLine(method string, uri *RequestUri, schema string, version float64) *RequestLine {
 	return &RequestLine{
-		method:     method,
-		requestUri: requestUri,
-		schema:     schema,
-		version:    version,
-		isOrder:    false,
-		order:      make(chan string, 1024),
+		method:  method,
+		uri:     uri,
+		schema:  schema,
+		version: version,
 	}
 }
-func (requestLine *RequestLine) Raw() string {
-	result := ""
-	if requestLine.isOrder {
-		for data := range requestLine.order {
-			result += data
-		}
-		requestLine.isOrder = false
-		result += "\r\n"
-		return result
-	}
-
+func (rl *RequestLine) Raw() (result strings.Builder) {
 	// method:INVITE, ACK,BYE,CANCEL,REGISTER,OPTIONS,INFO etc.
-	if len(strings.TrimSpace(requestLine.method)) > 0 {
-		result += strings.ToUpper(requestLine.method)
+	if len(strings.TrimSpace(rl.method)) > 0 {
+		result.WriteString(strings.ToUpper(rl.method))
 	}
 	// SIP-URI/SIPS-URI
-	if requestLine.requestUri != nil {
-		uri := requestLine.requestUri.Raw()
-		result += fmt.Sprintf(" %s", uri.String())
+	if rl.uri != nil {
+		uri := rl.uri.Raw()
+		result.WriteString(fmt.Sprintf(" %s", uri.String()))
 	}
 	// schema: sip,sips,tel etc.
-	if len(strings.TrimSpace(requestLine.schema)) > 0 {
-		result += fmt.Sprintf(" %s", strings.ToUpper(requestLine.schema))
+	if len(strings.TrimSpace(rl.schema)) > 0 {
+		result.WriteString(fmt.Sprintf(" %s", strings.ToUpper(rl.schema)))
 	}
 	// version: 2.0
-	result += fmt.Sprintf("/%1.1f", requestLine.version)
-	result += "\r\n"
+	result.WriteString(fmt.Sprintf("/%1.1f", rl.version))
+	result.WriteString("\r\n")
 	return result
 }
-func (requestLine *RequestLine) Parse(raw string) {
+func (rl *RequestLine) Parse(raw string) {
 	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
 	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
@@ -232,14 +202,12 @@ func (requestLine *RequestLine) Parse(raw string) {
 	if !methodRegexp.MatchString(raw) && !schemaAndVersionRegexp.MatchString(raw) {
 		return
 	}
-	requestLine.source = raw
-	requestLine.requestUri = new(RequestUri)
-	// request-line order
-	requestLine.requestlineOrder(raw)
+	rl.source = raw
+	rl.uri = new(RequestUri)
 	if methodRegexp.MatchString(raw) {
 		method := methodRegexp.FindString(raw)
 		method = stringTrimPrefixAndTrimSuffix(method, " ")
-		requestLine.method = method
+		rl.method = method
 		raw = strings.TrimPrefix(raw, method)
 	}
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
@@ -253,26 +221,18 @@ func (requestLine *RequestLine) Parse(raw string) {
 		if schemaRegexp.MatchString(schemaAndVersion) {
 			schema := schemaRegexp.FindString(schemaAndVersion)
 			schema = stringTrimPrefixAndTrimSuffix(schema, " ")
-			requestLine.schema = schema
+			rl.schema = schema
 		}
 		if versionRegexp.MatchString(schemaAndVersion) {
 			versions := versionRegexp.Find([]byte(schemaAndVersion))
 			version, _ := strconv.ParseFloat(string(versions), 64)
-			requestLine.version = version
+			rl.version = version
 		}
 		raw = strings.ReplaceAll(raw, schemaAndVersion, "")
 	}
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
 	if len(strings.TrimSpace(raw)) > 0 {
 
-		requestLine.requestUri.Parse(raw)
+		rl.uri.Parse(raw)
 	}
-}
-func (requestLine *RequestLine) requestlineOrder(raw string) {
-	if requestLine.order == nil {
-		requestLine.order = make(chan string, 1024)
-	}
-	requestLine.isOrder = true
-	defer close(requestLine.order)
-	requestLine.order <- raw
 }

@@ -42,14 +42,14 @@ type Date struct {
 	field      string //  "Date"
 	timeFormat string // default: yyyy-MM-dd'T'HH:mm:ss.SSS
 	sipDate    time.Time
-	isOrder    bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
-	order      chan string // It is convenient to record the order of the original parameter fields when parsing
-	source     string      // date source string
+	source     string // source string
 }
 
 func (date *Date) SetField(field string) {
 	if regexp.MustCompile(`^(?i)(date)$`).MatchString(field) {
 		date.field = strings.Title(field)
+	} else {
+		date.field = "Date"
 	}
 }
 func (date *Date) GetField() string {
@@ -67,22 +67,6 @@ func (date *Date) SetSipDate(sipDate time.Time) {
 func (date *Date) GetSipDate() time.Time {
 	return date.sipDate
 }
-func (date *Date) GetIsOrder() bool {
-	return date.isOrder
-}
-func (date *Date) GetOrder() []string {
-	result := make([]string, 0)
-	if date.order == nil {
-		return result
-	}
-	for data := range date.order {
-		result = append(result, data)
-	}
-	return result
-}
-func (date *Date) SetSource(source string) {
-	date.source = source
-}
 func (date *Date) GetSource() string {
 	return date.source
 }
@@ -92,30 +76,19 @@ func NewDate(timeFormat string, sipDate time.Time) *Date {
 		field:      "Date",
 		timeFormat: timeFormat,
 		sipDate:    sipDate,
-		isOrder:    false,
-		order:      make(chan string, 1024),
 	}
 }
-func (date *Date) Raw() string {
-	result := ""
-	if date.isOrder {
-		for data := range date.order {
-			result += data
-		}
-		date.isOrder = false
-		result += "\r\n"
-		return result
-	}
+func (date *Date) Raw() (result strings.Builder) {
 	if len(strings.TrimSpace(date.field)) == 0 {
 		date.field = "Date"
 	}
-	result += fmt.Sprintf("%s:", strings.Title(date.field))
+	result.WriteString(fmt.Sprintf("%s:", strings.Title(date.field)))
 	if len(strings.TrimSpace(date.timeFormat)) == 0 {
 		date.timeFormat = "2006-01-02T15:04:05.000"
 	}
-	result += fmt.Sprintf(" %s", date.sipDate.Format(date.timeFormat))
-	result += "\r\n"
-	return result
+	result.WriteString(fmt.Sprintf(" %s", date.sipDate.Format(date.timeFormat)))
+	result.WriteString("\r\n")
+	return
 }
 func (date *Date) Parse(raw string) {
 	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
@@ -130,8 +103,6 @@ func (date *Date) Parse(raw string) {
 		return
 	}
 	date.source = raw
-	// date order
-	date.dateOrder(raw)
 	field := fieldRegexp.FindString(raw)
 	raw = strings.TrimPrefix(raw, field)
 	field = strings.ReplaceAll(field, ":", "")
@@ -194,12 +165,4 @@ func (date *Date) Parse(raw string) {
 			date.timeFormat = "unknown"
 		}
 	}
-}
-func (date *Date) dateOrder(raw string) {
-	if date.order == nil {
-		date.order = make(chan string, 1024)
-	}
-	date.isOrder = true
-	defer close(date.order)
-	date.order <- raw
 }

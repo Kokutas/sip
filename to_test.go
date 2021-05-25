@@ -2,18 +2,23 @@ package sip
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 )
 
 func TestTo_Raw(t *testing.T) {
+	p := sync.Map{}
+	p.Store("hei", "hei")
+	p.Store("ha", nil)
 	ts := []*To{
-		NewTo("", "<", "sip", "34020000001320000001", "192.168.0.1", "5060", "tag123", ""),
-		NewTo("34020000001320000001", "'", "sip", "34020000001320000001", "www.baidu.com", "", "tag123", ""),
-		NewTo("tom", "\"", "sip", "34020000001320000001", "www.baidu.com", "", "tag123", ""),
-		NewTo("alisa", "", "sip", "34020000001320000001", "www.baidu.com", "", "tag123", "hei=hei;ha=ha"),
+		NewTo("", "<", "sip", "34020000001320000001", "192.168.0.1", 5060, "tag123", sync.Map{}),
+		NewTo("34020000001320000001", "'", "sip", "34020000001320000001", "www.baidu.com", 0, "tag123", sync.Map{}),
+		NewTo("tom", "\"", "sip", "34020000001320000001", "www.baidu.com", 0, "tag123", sync.Map{}),
+		NewTo("alisa", "", "sip", "34020000001320000001", "www.baidu.com", 0, "tag123", p),
 	}
 	for _, t := range ts {
-		fmt.Print(t.Raw())
+		result := t.Raw()
+		fmt.Print(result.String())
 	}
 }
 
@@ -31,13 +36,13 @@ func TestTo_Parse(t *testing.T) {
 		t := new(To)
 		t.Parse(raw)
 		if len(t.source) > 0 {
-			fmt.Print("--------------------", t.Raw())
 			t.SetUser("2345678")
 			t.SetTag("xxxxxxxxxxxxxxx")
-			if len(t.GetPort()) > 0 {
-				t.SetPort("8080")
+			if t.GetPort() > 0 {
+				t.SetPort(8080)
 			}
-			fmt.Print("||||||||||||||||||||", t.Raw())
+			result := t.Raw()
+			fmt.Print("||||||||||||||||||||", result.String())
 		}
 
 	}

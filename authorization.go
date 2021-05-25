@@ -172,119 +172,119 @@ type Authorization struct {
 }
 
 // "Authorization"
-func (authorization *Authorization) SetField(field string) {
+func (au *Authorization) SetField(field string) {
 	if regexp.MustCompile(`^(?i)(authorization)$`).MatchString(field) {
-		authorization.field = strings.Title(field)
+		au.field = strings.Title(field)
 	} else {
-		authorization.field = strings.Title("Authorization")
+		au.field = strings.Title("Authorization")
 	}
 }
-func (authorization *Authorization) GetField() string {
-	return authorization.field
+func (au *Authorization) GetField() string {
+	return au.field
 }
 
 // auth-schema: Basic / Digest
-func (authorization *Authorization) SetAuthSchema(authSchema string) {
+func (au *Authorization) SetAuthSchema(authSchema string) {
 	if regexp.MustCompile(`(?i)(basic|digest)`).MatchString(authSchema) {
-		authorization.authSchema = strings.Title(authSchema)
+		au.authSchema = strings.Title(authSchema)
 	}
-	authorization.authSchema = "Digest"
+	au.authSchema = "Digest"
 }
-func (authorization *Authorization) GetAuthSchema() string {
-	return authorization.authSchema
+func (au *Authorization) GetAuthSchema() string {
+	return au.authSchema
 }
 
 // username = "username" EQUAL username-value,username-value = quoted-string
-func (authorization *Authorization) SetUsername(username string) {
-	authorization.username = username
+func (au *Authorization) SetUsername(username string) {
+	au.username = username
 }
-func (authorization *Authorization) GetUsername() string {
-	return authorization.username
+func (au *Authorization) GetUsername() string {
+	return au.username
 }
 
 // realm = "realm" EQUAL realm-value,realm-value = quoted-string
-func (authorization *Authorization) SetRealm(realm string) {
-	authorization.realm = realm
+func (au *Authorization) SetRealm(realm string) {
+	au.realm = realm
 }
-func (authorization *Authorization) GetRealm() string {
-	return authorization.realm
+func (au *Authorization) GetRealm() string {
+	return au.realm
 }
 
 // nonce = "nonce" EQUAL nonce-value,nonce-value = quoted-string
-func (authorization *Authorization) SetNonce(nonce string) {
-	authorization.nonce = nonce
+func (au *Authorization) SetNonce(nonce string) {
+	au.nonce = nonce
 }
-func (authorization *Authorization) GetNonce() string {
-	return authorization.nonce
+func (au *Authorization) GetNonce() string {
+	return au.nonce
 }
 
 // digest-uri = "uri" EQUAL LDQUOT digest-uri-value RDQUOT,digest-uri-value = rquest-uri ; Equal to request-uri as specified by HTTP/1.1
-func (authorization *Authorization) SetUri(uri *RequestUri) {
-	authorization.uri = uri
+func (au *Authorization) SetUri(uri *RequestUri) {
+	au.uri = uri
 }
-func (authorization *Authorization) GetUri() *RequestUri {
-	return authorization.uri
+func (au *Authorization) GetUri() *RequestUri {
+	return au.uri
 }
 
 // dresponse = "response" EQUAL request-digest, request-digest = LDQUOT 32LHEX RDQUOT
-func (authorization *Authorization) SetResponse(response string) {
-	authorization.response = response
+func (au *Authorization) SetResponse(response string) {
+	au.response = response
 }
-func (authorization *Authorization) GetResponse() string {
-	return authorization.response
+func (au *Authorization) GetResponse() string {
+	return au.response
 }
 
 // algorithm = "algorithm" EQUAL ( "MD5" / "MD5-sess"/ token )
-func (authorization *Authorization) SetAlgorithm(algorithm string) {
-	authorization.algorithm = algorithm
+func (au *Authorization) SetAlgorithm(algorithm string) {
+	au.algorithm = algorithm
 }
-func (authorization *Authorization) GetAlgorithm() string {
-	return authorization.algorithm
+func (au *Authorization) GetAlgorithm() string {
+	return au.algorithm
 }
 
 // cnonce = "cnonce" EQUAL cnonce-value,cnonce-value = nonce-value
-func (authorization *Authorization) SetCNonce(cnonce string) {
-	authorization.cnonce = cnonce
+func (au *Authorization) SetCNonce(cnonce string) {
+	au.cnonce = cnonce
 }
-func (authorization *Authorization) GetCNonce() string {
-	return authorization.cnonce
+func (au *Authorization) GetCNonce() string {
+	return au.cnonce
 }
 
 // opaque =  "opaque" EQUAL quoted-string
-func (authorization *Authorization) SetOpaque(opaque string) {
-	authorization.opaque = opaque
+func (au *Authorization) SetOpaque(opaque string) {
+	au.opaque = opaque
 }
-func (authorization *Authorization) GetOpaque() string {
-	return authorization.opaque
+func (au *Authorization) GetOpaque() string {
+	return au.opaque
 }
 
 // message-qop = "qop" EQUAL qop-value,qop-value = "auth" / "auth-int" / token
-func (authorization *Authorization) SetQop(qop string) {
-	authorization.qop = qop
+func (au *Authorization) SetQop(qop string) {
+	au.qop = qop
 }
-func (authorization *Authorization) GetQop() string {
-	return authorization.qop
+func (au *Authorization) GetQop() string {
+	return au.qop
 }
 
 // nonce-count = "nc" EQUAL nc-value,nc-value = 8LHEX
-func (authorization *Authorization) SetNc(nc string) {
-	authorization.nc = nc
+func (au *Authorization) SetNc(nc string) {
+	au.nc = nc
 }
-func (authorization *Authorization) GetNc() string {
-	return authorization.nc
+func (au *Authorization) GetNc() string {
+	return au.nc
 }
 
 // auth-param = auth-param-name EQUAL ( token / quoted-string ),auth-param-name = token
-func (authorization *Authorization) SetAuthParam(authParam sync.Map) {
-	authorization.authParam = authParam
+func (au *Authorization) SetAuthParam(authParam sync.Map) {
+	au.authParam = authParam
 }
-func (authorization *Authorization) GetAuthParam() sync.Map {
-	return authorization.authParam
+func (au *Authorization) GetAuthParam() sync.Map {
+	return au.authParam
 }
 
 // source string
-func (authorization *Authorization) GetSource() string {
-	return authorization.source
+func (au *Authorization) GetSource() string {
+	return au.source
 }
 func NewAuthorization(username string, realm string, nonce string, uri *RequestUri, response string, algorithm string, cnonce string, opaque string, qop string, nc string, authParam sync.Map) *Authorization {
 	return &Authorization{
@@ -304,50 +304,50 @@ func NewAuthorization(username string, realm string, nonce string, uri *RequestU
 		isOrder:    false,
 	}
 }
-func (authorization *Authorization) Raw() (result strings.Builder) {
+func (au *Authorization) Raw() (result strings.Builder) {
 
 	// "Authorization"
-	if len(strings.TrimSpace(authorization.field)) == 0 {
-		authorization.field = "Authorization"
-		result.WriteString(fmt.Sprintf("%s:", strings.Title(authorization.field)))
+	if len(strings.TrimSpace(au.field)) == 0 {
+		au.field = "Authorization"
+		result.WriteString(fmt.Sprintf("%s:", strings.Title(au.field)))
 	}
-	result.WriteString(fmt.Sprintf("%s:", authorization.field))
+	result.WriteString(fmt.Sprintf("%s:", au.field))
 	// auth-schema: Basic / Digest
-	if len(strings.TrimSpace(authorization.authSchema)) == 0 {
-		authorization.authSchema = "Digest"
-		result.WriteString(fmt.Sprintf(" %s", strings.Title(authorization.authSchema)))
+	if len(strings.TrimSpace(au.authSchema)) == 0 {
+		au.authSchema = "Digest"
+		result.WriteString(fmt.Sprintf(" %s", strings.Title(au.authSchema)))
 	}
-	result.WriteString(fmt.Sprintf(" %s", authorization.authSchema))
+	result.WriteString(fmt.Sprintf(" %s", au.authSchema))
 
-	if authorization.isOrder {
-		authorization.isOrder = false
-		for orders := range authorization.order {
+	if au.isOrder {
+		au.isOrder = false
+		for orders := range au.order {
 			if regexp.MustCompile(`((?i)(username))( )*=`).MatchString(orders) {
 				// username = "username" EQUAL username-value,username-value = quoted-string
-				if len(strings.TrimSpace(authorization.username)) > 0 {
-					result.WriteString(fmt.Sprintf(" username=\"%s\",", authorization.username))
+				if len(strings.TrimSpace(au.username)) > 0 {
+					result.WriteString(fmt.Sprintf(" username=\"%s\",", au.username))
 					continue
 				}
 			}
 			if regexp.MustCompile(`((?i)(realm))( )*=`).MatchString(orders) {
 				// realm = "realm" EQUAL realm-value,realm-value = quoted-string
-				if len(strings.TrimSpace(authorization.realm)) > 0 {
-					result.WriteString(fmt.Sprintf(" realm=\"%s\",", authorization.realm))
+				if len(strings.TrimSpace(au.realm)) > 0 {
+					result.WriteString(fmt.Sprintf(" realm=\"%s\",", au.realm))
 					continue
 				}
 			}
 			if regexp.MustCompile(`((?i)(nonce))( )*=`).MatchString(orders) {
 				// nonce = "nonce" EQUAL nonce-value,nonce-value = quoted-string
-				if len(strings.TrimSpace(authorization.nonce)) > 0 {
-					result.WriteString(fmt.Sprintf(" nonce=\"%s\",", authorization.nonce))
+				if len(strings.TrimSpace(au.nonce)) > 0 {
+					result.WriteString(fmt.Sprintf(" nonce=\"%s\",", au.nonce))
 				}
 				continue
 			}
 
 			if regexp.MustCompile(`((?i)(uri))( )*=`).MatchString(orders) {
 				// digest-uri = "uri" EQUAL LDQUOT digest-uri-value RDQUOT,digest-uri-value = rquest-uri ; Equal to request-uri as specified by HTTP/1.1
-				if authorization.uri != nil {
-					uri := authorization.uri.Raw()
+				if au.uri != nil {
+					uri := au.uri.Raw()
 					result.WriteString(fmt.Sprintf(" uri=\"%s\",", uri.String()))
 				}
 				continue
@@ -355,53 +355,53 @@ func (authorization *Authorization) Raw() (result strings.Builder) {
 
 			if regexp.MustCompile(`((?i)(response))( )*=`).MatchString(orders) {
 				// dresponse = "response" EQUAL request-digest, request-digest = LDQUOT 32LHEX RDQUOT
-				if len(strings.TrimSpace(authorization.response)) > 0 {
-					result.WriteString(fmt.Sprintf(" response=\"%s\",", authorization.response))
+				if len(strings.TrimSpace(au.response)) > 0 {
+					result.WriteString(fmt.Sprintf(" response=\"%s\",", au.response))
 				}
 				continue
 			}
 
 			if regexp.MustCompile(`((?i)(algorithm))( )*=`).MatchString(orders) {
 				// algorithm = "algorithm" EQUAL ( "MD5" / "MD5-sess"/ token )
-				if len(strings.TrimSpace(authorization.algorithm)) > 0 {
-					result.WriteString(fmt.Sprintf(" algorithm=%s,", authorization.algorithm))
+				if len(strings.TrimSpace(au.algorithm)) > 0 {
+					result.WriteString(fmt.Sprintf(" algorithm=%s,", au.algorithm))
 				}
 				continue
 			}
 
 			if regexp.MustCompile(`((?i)(cnonce))( )*=`).MatchString(orders) {
 				// cnonce = "cnonce" EQUAL cnonce-value,cnonce-value = nonce-value
-				if len(strings.TrimSpace(authorization.cnonce)) > 0 {
-					result.WriteString(fmt.Sprintf(" cnonce=\"%s\",", authorization.cnonce))
+				if len(strings.TrimSpace(au.cnonce)) > 0 {
+					result.WriteString(fmt.Sprintf(" cnonce=\"%s\",", au.cnonce))
 				}
 				continue
 			}
 
 			if regexp.MustCompile(`((?i)(opaque))( )*=`).MatchString(orders) {
 				// opaque =  "opaque" EQUAL quoted-string
-				if len(strings.TrimSpace(authorization.opaque)) > 0 {
-					result.WriteString(fmt.Sprintf(" opaque=\"%s\",", authorization.opaque))
+				if len(strings.TrimSpace(au.opaque)) > 0 {
+					result.WriteString(fmt.Sprintf(" opaque=\"%s\",", au.opaque))
 				}
 				continue
 			}
 
 			if regexp.MustCompile(`((?i)(qop))( )*=`).MatchString(orders) {
 				// message-qop = "qop" EQUAL qop-value,qop-value = "auth" / "auth-int" / token
-				if len(strings.TrimSpace(authorization.qop)) > 0 {
-					result.WriteString(fmt.Sprintf(" qop=%s,", authorization.qop))
+				if len(strings.TrimSpace(au.qop)) > 0 {
+					result.WriteString(fmt.Sprintf(" qop=%s,", au.qop))
 				}
 				continue
 			}
 			if regexp.MustCompile(`((?i)(nc))( )*=`).MatchString(orders) {
 				// nonce-count = "nc" EQUAL nc-value,nc-value = 8LHEX
-				if len(strings.TrimSpace(authorization.nc)) > 0 {
-					result.WriteString(fmt.Sprintf(" nc=%s,", authorization.nc))
+				if len(strings.TrimSpace(au.nc)) > 0 {
+					result.WriteString(fmt.Sprintf(" nc=%s,", au.nc))
 				}
 				continue
 			}
 			ordersSlice := strings.Split(orders, "=")
 			if len(ordersSlice) == 1 {
-				if val, ok := authorization.authParam.LoadAndDelete(ordersSlice[0]); ok {
+				if val, ok := au.authParam.LoadAndDelete(ordersSlice[0]); ok {
 					if len(strings.TrimSpace(fmt.Sprintf("%v", val))) > 0 {
 						result.WriteString(fmt.Sprintf("  %v=\"%v\",", ordersSlice[0], val))
 					} else {
@@ -411,7 +411,7 @@ func (authorization *Authorization) Raw() (result strings.Builder) {
 					result.WriteString(fmt.Sprintf(" %v,", ordersSlice[0]))
 				}
 			} else {
-				if val, ok := authorization.authParam.LoadAndDelete(ordersSlice[0]); ok {
+				if val, ok := au.authParam.LoadAndDelete(ordersSlice[0]); ok {
 					if len(strings.TrimSpace(fmt.Sprintf("%v", val))) > 0 {
 						result.WriteString(fmt.Sprintf(" %v=\"%v\",", ordersSlice[0], val))
 					} else {
@@ -419,56 +419,60 @@ func (authorization *Authorization) Raw() (result strings.Builder) {
 					}
 
 				} else {
-					result.WriteString(fmt.Sprintf(" %v=\"%v\",", ordersSlice[0], ordersSlice[1]))
+					if len(strings.TrimSpace(fmt.Sprintf("%v", ordersSlice[1]))) > 0 {
+						result.WriteString(fmt.Sprintf("  %v=\"%v\",", ordersSlice[0], ordersSlice[1]))
+					} else {
+						result.WriteString(fmt.Sprintf(" %v,", ordersSlice[0]))
+					}
 				}
 			}
 		}
 	} else {
 		// username = "username" EQUAL username-value,username-value = quoted-string
-		if len(strings.TrimSpace(authorization.username)) > 0 {
-			result.WriteString(fmt.Sprintf(" username=\"%s\",", authorization.username))
+		if len(strings.TrimSpace(au.username)) > 0 {
+			result.WriteString(fmt.Sprintf(" username=\"%s\",", au.username))
 		}
 		// realm = "realm" EQUAL realm-value,realm-value = quoted-string
-		if len(strings.TrimSpace(authorization.realm)) > 0 {
-			result.WriteString(fmt.Sprintf(" realm=\"%s\",", authorization.realm))
+		if len(strings.TrimSpace(au.realm)) > 0 {
+			result.WriteString(fmt.Sprintf(" realm=\"%s\",", au.realm))
 		}
 		// nonce = "nonce" EQUAL nonce-value,nonce-value = quoted-string
-		if len(strings.TrimSpace(authorization.nonce)) > 0 {
-			result.WriteString(fmt.Sprintf(" nonce=\"%s\",", authorization.nonce))
+		if len(strings.TrimSpace(au.nonce)) > 0 {
+			result.WriteString(fmt.Sprintf(" nonce=\"%s\",", au.nonce))
 		}
 		// digest-uri = "uri" EQUAL LDQUOT digest-uri-value RDQUOT,digest-uri-value = rquest-uri ; Equal to request-uri as specified by HTTP/1.1
-		if authorization.uri != nil {
-			uri := authorization.uri.Raw()
+		if au.uri != nil {
+			uri := au.uri.Raw()
 			result.WriteString(fmt.Sprintf(" uri=\"%s\",", uri.String()))
 		}
 		// dresponse = "response" EQUAL request-digest, request-digest = LDQUOT 32LHEX RDQUOT
-		if len(strings.TrimSpace(authorization.response)) > 0 {
-			result.WriteString(fmt.Sprintf(" response=\"%s\",", authorization.response))
+		if len(strings.TrimSpace(au.response)) > 0 {
+			result.WriteString(fmt.Sprintf(" response=\"%s\",", au.response))
 		}
 		// algorithm = "algorithm" EQUAL ( "MD5" / "MD5-sess"/ token )
-		if len(strings.TrimSpace(authorization.algorithm)) > 0 {
-			result.WriteString(fmt.Sprintf(" algorithm=%s,", authorization.algorithm))
+		if len(strings.TrimSpace(au.algorithm)) > 0 {
+			result.WriteString(fmt.Sprintf(" algorithm=%s,", au.algorithm))
 		}
 		// cnonce = "cnonce" EQUAL cnonce-value,cnonce-value = nonce-value
-		if len(strings.TrimSpace(authorization.cnonce)) > 0 {
-			result.WriteString(fmt.Sprintf(" cnonce=\"%s\",", authorization.cnonce))
+		if len(strings.TrimSpace(au.cnonce)) > 0 {
+			result.WriteString(fmt.Sprintf(" cnonce=\"%s\",", au.cnonce))
 		}
 		// opaque =  "opaque" EQUAL quoted-string
-		if len(strings.TrimSpace(authorization.opaque)) > 0 {
-			result.WriteString(fmt.Sprintf(" opaque=\"%s\",", authorization.opaque))
+		if len(strings.TrimSpace(au.opaque)) > 0 {
+			result.WriteString(fmt.Sprintf(" opaque=\"%s\",", au.opaque))
 		}
 		// message-qop = "qop" EQUAL qop-value,qop-value = "auth" / "auth-int" / token
-		if len(strings.TrimSpace(authorization.qop)) > 0 {
-			result.WriteString(fmt.Sprintf(" qop=%s,", authorization.qop))
+		if len(strings.TrimSpace(au.qop)) > 0 {
+			result.WriteString(fmt.Sprintf(" qop=%s,", au.qop))
 		}
 		// nonce-count = "nc" EQUAL nc-value,nc-value = 8LHEX
-		if len(strings.TrimSpace(authorization.nc)) > 0 {
-			result.WriteString(fmt.Sprintf(" nc=%s,", authorization.nc))
+		if len(strings.TrimSpace(au.nc)) > 0 {
+			result.WriteString(fmt.Sprintf(" nc=%s,", au.nc))
 		}
 	}
 
 	// auth-param = auth-param-name EQUAL ( token / quoted-string ),auth-param-name = token
-	authorization.authParam.Range(func(key, value interface{}) bool {
+	au.authParam.Range(func(key, value interface{}) bool {
 		if reflect.ValueOf(value).IsValid() {
 			if reflect.ValueOf(value).IsZero() {
 				result.WriteString(fmt.Sprintf(" %v,", key))
@@ -487,7 +491,7 @@ func (authorization *Authorization) Raw() (result strings.Builder) {
 	result.WriteString("\r\n")
 	return
 }
-func (authorization *Authorization) Parse(raw string) {
+func (au *Authorization) Parse(raw string) {
 	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
 	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
@@ -499,21 +503,21 @@ func (authorization *Authorization) Parse(raw string) {
 	if !fieldRegexp.MatchString(raw) {
 		return
 	}
-	authorization.source = raw
-	authorization.uri = new(RequestUri)
-	authorization.authParam = sync.Map{}
+	au.source = raw
+	au.uri = new(RequestUri)
+	au.authParam = sync.Map{}
 
 	field := fieldRegexp.FindString(raw)
 	field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
 	field = stringTrimPrefixAndTrimSuffix(field, " ")
-	authorization.field = field
+	au.field = field
 	raw = fieldRegexp.ReplaceAllString(raw, "")
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
 	// auth-schema regexp
 	authschemaRegexp := regexp.MustCompile(`(?i)(basic|digest)`)
 	if authschemaRegexp.MatchString(raw) {
 		authschema := authschemaRegexp.FindString(raw)
-		authorization.authSchema = authschema
+		au.authSchema = authschema
 		raw = authschemaRegexp.ReplaceAllString(raw, "")
 	}
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
@@ -524,7 +528,7 @@ func (authorization *Authorization) Parse(raw string) {
 	}
 
 	// authorization order
-	authorization.authorizationOrder(raw)
+	au.authorizationOrder(raw)
 
 	// username regexp : username = "username" EQUAL username-value,username-value = quoted-string
 	usernameRegexp := regexp.MustCompile(`((?i)(?:^username))( )*=`)
@@ -553,63 +557,63 @@ func (authorization *Authorization) Parse(raw string) {
 		case usernameRegexp.MatchString(raws):
 			username := usernameRegexp.ReplaceAllString(raws, "")
 			username = regexp.MustCompile(`"`).ReplaceAllString(username, "")
-			authorization.username = username
+			au.username = username
 		case realmRegexp.MatchString(raws):
 			realm := realmRegexp.ReplaceAllString(raws, "")
 			realm = regexp.MustCompile(`"`).ReplaceAllString(realm, "")
-			authorization.realm = realm
+			au.realm = realm
 		case nonceRegexp.MatchString(raws):
 			nonce := nonceRegexp.ReplaceAllString(raws, "")
 			nonce = regexp.MustCompile(`"`).ReplaceAllString(nonce, "")
-			authorization.nonce = nonce
+			au.nonce = nonce
 		case uriRegexp.MatchString(raws):
 			uri := uriRegexp.ReplaceAllString(raws, "")
 			uri = regexp.MustCompile(`"`).ReplaceAllString(uri, "")
-			authorization.uri.Parse(uri)
+			au.uri.Parse(uri)
 		case responseRegexp.MatchString(raws):
 			response := responseRegexp.ReplaceAllString(raws, "")
 			response = regexp.MustCompile(`"`).ReplaceAllString(response, "")
-			authorization.response = response
+			au.response = response
 		case algorithmRegexp.MatchString(raws):
 			algorithm := algorithmRegexp.ReplaceAllString(raws, "")
 			algorithm = regexp.MustCompile(`"`).ReplaceAllString(algorithm, "")
-			authorization.algorithm = algorithm
+			au.algorithm = algorithm
 		case cnonceRegexp.MatchString(raws):
 			cnonce := cnonceRegexp.ReplaceAllString(raws, "")
 			cnonce = regexp.MustCompile(`"`).ReplaceAllString(cnonce, "")
-			authorization.cnonce = cnonce
+			au.cnonce = cnonce
 		case opaqueRegexp.MatchString(raws):
 			opaque := opaqueRegexp.ReplaceAllString(raws, "")
 			opaque = regexp.MustCompile(`"`).ReplaceAllString(opaque, "")
-			authorization.opaque = opaque
+			au.opaque = opaque
 		case qopRegexp.MatchString(raws):
 			qop := qopRegexp.ReplaceAllString(raws, "")
 			qop = regexp.MustCompile(`"`).ReplaceAllString(qop, "")
-			authorization.qop = qop
+			au.qop = qop
 		case ncRegexp.MatchString(raws):
 			nc := ncRegexp.ReplaceAllString(raws, "")
 			nc = regexp.MustCompile(`"`).ReplaceAllString(nc, "")
-			authorization.nc = nc
+			au.nc = nc
 		default:
 			// authParam  sync.Map    // auth-param = auth-param-name EQUAL ( token / quoted-string ),auth-param-name = token
 			kvs := strings.Split(raws, "=")
 			if len(kvs) == 1 {
-				authorization.authParam.Store(kvs[0], "")
+				au.authParam.Store(kvs[0], "")
 			} else {
-				authorization.authParam.Store(kvs[0], kvs[1])
+				au.authParam.Store(kvs[0], kvs[1])
 			}
 		}
 	}
 
 }
-func (authorization *Authorization) authorizationOrder(raw string) {
-	authorization.isOrder = true
-	authorization.order = make(chan string, 1024)
-	defer close(authorization.order)
+func (au *Authorization) authorizationOrder(raw string) {
+	au.isOrder = true
+	au.order = make(chan string, 1024)
+	defer close(au.order)
 	raw = stringTrimPrefixAndTrimSuffix(raw, ",")
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
 	rawSlice := strings.Split(raw, ",")
 	for _, raws := range rawSlice {
-		authorization.order <- raws
+		au.order <- raws
 	}
 }

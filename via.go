@@ -2,7 +2,6 @@ package sip
 
 import (
 	"fmt"
-	"net"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -228,19 +227,21 @@ type Via struct {
 	port      uint16      // port part,sent-by =  host [ COLON port ]
 	ttl       uint8       // via-ttl  =  "ttl" EQUAL ttl,ttl =  1*3DIGIT ; 0 to 255
 	maddr     string      // via-maddr =  "maddr" EQUAL host
-	received  net.IP      // via-received =  "received" EQUAL (IPv4address / IPv6address)
+	received  string      // via-received =  "received" EQUAL (IPv4address / IPv6address)
 	branch    string      // via-branch =  "branch" EQUAL token
 	rport     uint16      // response port -- RFC3581
 	trans     string      // parameter transport,transport-param = "transport="( "udp" / "tcp" / "sctp" / "tls"/ other-transport),other-transport   =  token
-	generic   sync.Map    // key:string,value:interface{}-basic data type, via-extension = generic-param,generic-param = token [ EQUAL gen-value ], gen-value = token / host / quoted-string
+	parameter sync.Map    // key:string,value:interface{}-basic data type, via-extension = generic-param,generic-param = token [ EQUAL gen-value ], gen-value = token / host / quoted-string
 	isOrder   bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
 	order     chan string // It is convenient to record the order of the original parameter fields when parsing
-	source    string      // via header line source string
+	source    string      // source string
 }
 
 func (v *Via) SetField(field string) {
 	if regexp.MustCompile(`^(?i)(via|v)$`).MatchString(field) {
 		v.field = strings.Title(field)
+	} else {
+		v.field = "Via"
 	}
 }
 func (v *Via) GetField() string {
@@ -288,10 +289,10 @@ func (v *Via) SetMaddr(maddr string) {
 func (v *Via) GetMaddr() string {
 	return v.maddr
 }
-func (v *Via) SetReceived(received net.IP) {
+func (v *Via) SetReceived(received string) {
 	v.received = received
 }
-func (v *Via) GetReceived() net.IP {
+func (v *Via) GetReceived() string {
 	return v.received
 }
 func (v *Via) SetBranch(branch string) {
@@ -313,30 +314,16 @@ func (v *Via) GetTrans() string {
 	return v.trans
 }
 
-func (v *Via) SetGeneric(generic sync.Map) {
-	v.generic = generic
+func (v *Via) SetParameter(parameter sync.Map) {
+	v.parameter = parameter
 }
-func (v *Via) GetGeneric() sync.Map {
-	return v.generic
-}
-func (v *Via) GetOrder() []string {
-	result := make([]string, 0)
-	if v.order == nil {
-		return result
-	}
-	for data := range v.order {
-		result = append(result, data)
-	}
-	return result
-}
-
-func (v *Via) SetSource(source string) {
-	v.source = source
+func (v *Via) GetParameter() sync.Map {
+	return v.parameter
 }
 func (v *Via) GetSource() string {
 	return v.source
 }
-func NewVia(schema string, version float64, transport string, host string, port uint16, ttl uint8, maddr string, received net.IP, branch string, rport uint16, trans string, generic sync.Map) *Via {
+func NewVia(schema string, version float64, transport string, host string, port uint16, ttl uint8, maddr string, received string, branch string, rport uint16, trans string, parameter sync.Map) *Via {
 	return &Via{
 		schema:    schema,
 		version:   version,
@@ -349,86 +336,144 @@ func NewVia(schema string, version float64, transport string, host string, port 
 		branch:    branch,
 		rport:     rport,
 		trans:     trans,
-		generic:   generic,
+		parameter: parameter,
 		isOrder:   false,
-		order:     make(chan string, 1024),
 	}
 }
 
-func (v *Via) Raw() string {
-	result := ""
+func (v *Via) Raw() (result strings.Builder) {
 	if len(strings.TrimSpace(v.field)) > 0 {
-		result += fmt.Sprintf("%s:", v.field)
+		result.WriteString(fmt.Sprintf("%s:", v.field))
 	} else {
-		result += fmt.Sprintf("%s:", strings.Title("Via"))
+		result.WriteString(fmt.Sprintf("%s:", strings.Title("Via")))
 	}
 	if len(strings.TrimSpace(v.schema)) > 0 {
-		result += fmt.Sprintf(" %s", strings.ToUpper(v.schema))
+		result.WriteString(fmt.Sprintf(" %s", strings.ToUpper(v.schema)))
 	}
 	if v.version > 0 {
-		result += fmt.Sprintf("/%1.1f", v.version)
+		result.WriteString(fmt.Sprintf("/%1.1f", v.version))
 	}
 	if len(strings.TrimSpace(v.transport)) > 0 {
-		result += fmt.Sprintf("/%s", strings.ToUpper(v.transport))
+		result.WriteString(fmt.Sprintf("/%s", strings.ToUpper(v.transport)))
 	}
-	uri := ""
 	if len(strings.TrimSpace(v.host)) > 0 {
-		uri += v.host
+		result.WriteString(fmt.Sprintf(" %s", v.host))
 	}
 
 	if v.port > 0 {
-		if len(uri) > 0 {
-			uri += fmt.Sprintf(":%d", v.port)
+		if len(result.String()) > 0 {
+			result.WriteString(fmt.Sprintf(":%d", v.port))
 		} else {
-			uri += fmt.Sprintf("%d", v.port)
+			result.WriteString(fmt.Sprintf("%d", v.port))
 		}
 	}
 
 	if v.isOrder {
-		for data := range v.order {
-			uri += fmt.Sprintf(";%s", data)
+		v.isOrder = false
+		for orders := range v.order {
+
+			if regexp.MustCompile(`(?i)(rport)( )*`).MatchString(orders) {
+				if v.rport == 1 {
+					result.WriteString(";rport")
+				} else if v.rport > 1 {
+					result.WriteString(fmt.Sprintf(";rport=%d", v.rport))
+				}
+				continue
+			}
+			if regexp.MustCompile(`(?i)(transport)( )*=`).MatchString(orders) {
+				if len(strings.TrimSpace(v.trans)) > 0 {
+					result.WriteString(fmt.Sprintf(";transport=%v", v.trans))
+				}
+				continue
+			}
+
+			if regexp.MustCompile(`(?i)(ttl)( )*=`).MatchString(orders) {
+				if v.ttl > 0 {
+					result.WriteString(fmt.Sprintf(";ttl=%d", v.ttl))
+				}
+				continue
+			}
+
+			if regexp.MustCompile(`(?i)(maddr)( )*=`).MatchString(orders) {
+				if len(strings.TrimSpace(v.maddr)) > 0 {
+					result.WriteString(fmt.Sprintf(";maddr=%s", v.maddr))
+				}
+				continue
+			}
+			if regexp.MustCompile(`(?i)(branch)( )*=`).MatchString(orders) {
+				if len(strings.TrimSpace(v.branch)) > 0 {
+					result.WriteString(fmt.Sprintf(";branch=%s", v.branch))
+				}
+				continue
+			}
+			if regexp.MustCompile(`(?i)(received)( )*=`).MatchString(orders) {
+				if len(strings.TrimSpace(v.received)) > 0 {
+					result.WriteString(fmt.Sprintf(";received=%s", v.received))
+				}
+				continue
+			}
+			ordersSlice := strings.Split(orders, "=")
+			if len(ordersSlice) == 1 {
+				if val, ok := v.parameter.LoadAndDelete(ordersSlice[0]); ok {
+					if len(strings.TrimSpace(fmt.Sprintf("%v", val))) > 0 {
+						result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], val))
+					} else {
+						result.WriteString(fmt.Sprintf(";%v", ordersSlice[0]))
+					}
+
+				} else {
+					result.WriteString(fmt.Sprintf(";%v", ordersSlice[0]))
+				}
+			} else {
+				if val, ok := v.parameter.LoadAndDelete(ordersSlice[0]); ok {
+					if len(strings.TrimSpace(fmt.Sprintf("%v", val))) > 0 {
+						result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], val))
+					} else {
+						result.WriteString(fmt.Sprintf(";%v", ordersSlice[0]))
+					}
+				} else {
+					result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], ordersSlice[1]))
+				}
+			}
 		}
 
 	} else {
 		if v.rport == 1 {
-			uri += fmt.Sprintf(";%s", "rport")
+			result.WriteString(fmt.Sprintf(";%s", "rport"))
 		} else if v.rport > 1 {
-			uri += fmt.Sprintf(";rport=%d", v.rport)
+			result.WriteString(fmt.Sprintf(";rport=%d", v.rport))
 		}
 		if len(strings.TrimSpace(v.trans)) > 0 {
-			uri += fmt.Sprintf(";transport=%s", v.trans)
+			result.WriteString(fmt.Sprintf(";transport=%s", v.trans))
 		}
 		if v.ttl > 0 {
-			uri += fmt.Sprintf(";ttl=%d", v.ttl)
+			result.WriteString(fmt.Sprintf(";ttl=%d", v.ttl))
 		}
 		if len(strings.TrimSpace(v.maddr)) > 0 {
-			uri += fmt.Sprintf(";maddr=%s", v.maddr)
+			result.WriteString(fmt.Sprintf(";maddr=%s", v.maddr))
 		}
 		if len(strings.TrimSpace(v.branch)) > 0 {
-			uri += fmt.Sprintf(";branch=%s", v.branch)
+			result.WriteString(fmt.Sprintf(";branch=%s", v.branch))
 		}
-		if v.received != nil {
-			uri += fmt.Sprintf(";received=%s", v.received.String())
+		if len(strings.TrimSpace(v.received)) > 0 {
+			result.WriteString(fmt.Sprintf(";received=%s", v.received))
 		}
-		v.generic.Range(func(key, value interface{}) bool {
-			if reflect.ValueOf(value).IsValid() {
-				if reflect.ValueOf(value).IsZero() {
-					uri += fmt.Sprintf(";%v", key)
-					return true
-				}
-				uri += fmt.Sprintf(";%v=%v", key, value)
+	}
+
+	v.parameter.Range(func(key, value interface{}) bool {
+		if reflect.ValueOf(value).IsValid() {
+			if reflect.ValueOf(value).IsZero() {
+				result.WriteString(fmt.Sprintf(";%v", key))
 				return true
 			}
-			uri += fmt.Sprintf(";%v", key)
+			result.WriteString(fmt.Sprintf(";%v=%v", key, value))
 			return true
-		})
-	}
-	v.isOrder = false
-	if len(uri) > 0 {
-		result += fmt.Sprintf(" %s", uri)
-	}
-	result += "\r\n"
-	return result
+		}
+		result.WriteString(fmt.Sprintf(";%v", key))
+		return true
+	})
+	result.WriteString("\r\n")
+	return
 }
 func (v *Via) Parse(raw string) {
 	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
@@ -444,6 +489,7 @@ func (v *Via) Parse(raw string) {
 	}
 	v.field = regexp.MustCompile(`:`).ReplaceAllString(fieldRegexp.FindString(raw), "")
 	v.source = raw
+	v.parameter = sync.Map{}
 	raw = fieldRegexp.ReplaceAllString(raw, "")
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
 
@@ -517,7 +563,7 @@ func (v *Via) Parse(raw string) {
 
 	// parameters
 	// parameters order
-	v.parametersOrder(raw)
+	v.parameterOrder(raw)
 	// ttl parameter regexp
 	ttlRegexp := regexp.MustCompile(`(?i)(ttl).*`)
 	// maddr parameter regexp
@@ -555,7 +601,7 @@ func (v *Via) Parse(raw string) {
 			received = regexp.MustCompile(`.*=`).ReplaceAllString(received, "")
 			received = stringTrimPrefixAndTrimSuffix(received, " ")
 			if len(received) > 0 {
-				v.received = net.ParseIP(received)
+				v.received = received
 			}
 		case branchRegexp.MatchString(raws):
 			branch := regexp.MustCompile(`(?i)(branch)`).ReplaceAllString(raws, "")
@@ -571,7 +617,11 @@ func (v *Via) Parse(raw string) {
 			if len(rports) > 0 {
 				if regexp.MustCompile(`\d+`).MatchString(rports) {
 					rport, _ := strconv.Atoi(regexp.MustCompile(`\d+`).FindString(rports))
-					v.rport = uint16(rport)
+					if rport > 0 {
+						v.rport = uint16(rport)
+					} else {
+						v.rport = 1
+					}
 				}
 				v.rport = 1
 			} else {
@@ -582,19 +632,19 @@ func (v *Via) Parse(raw string) {
 			transport = regexp.MustCompile(`.*=`).ReplaceAllString(transport, "")
 			transport = stringTrimPrefixAndTrimSuffix(transport, " ")
 			if len(transport) > 0 {
-				v.transport = transport
+				v.trans = transport
 			}
 		default:
 			if len(strings.TrimSpace(raws)) > 0 {
 				if strings.Contains(raws, "=") {
 					gs := strings.Split(raws, "=")
 					if len(gs) > 1 {
-						v.generic.Store(gs[0], gs[1])
+						v.parameter.Store(gs[0], gs[1])
 					} else {
-						v.generic.Store(gs[0], "")
+						v.parameter.Store(gs[0], "")
 					}
 				} else {
-					v.generic.Store(raws, "")
+					v.parameter.Store(raws, "")
 				}
 			}
 		}
@@ -603,16 +653,14 @@ func (v *Via) Parse(raw string) {
 
 }
 
-func (v *Via) parametersOrder(parameter string) {
-	if v.order == nil {
-		v.order = make(chan string, 1024)
-	}
-	defer close(v.order)
+func (v *Via) parameterOrder(raw string) {
 	v.isOrder = true
-	parameter = stringTrimPrefixAndTrimSuffix(parameter, ";")
-	parameter = stringTrimPrefixAndTrimSuffix(parameter, " ")
-	parameters := strings.Split(parameter, ";")
-	for _, data := range parameters {
-		v.order <- data
+	v.order = make(chan string, 1024)
+	defer close(v.order)
+	raw = stringTrimPrefixAndTrimSuffix(raw, ";")
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	rawSlice := strings.Split(raw, ";")
+	for _, raws := range rawSlice {
+		v.order <- raws
 	}
 }

@@ -76,57 +76,39 @@ type StatusLine struct {
 	version      float64
 	statusCode   uint
 	reasonPhrase string
-	isOrder      bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
-	order        chan string // It is convenient to record the order of the original parameter fields when parsing
-	source       string      // status-line source string
+	source       string // source string
 }
 
-func (statusLine *StatusLine) SetSchema(schema string) {
+func (sl *StatusLine) SetSchema(schema string) {
 	if regexp.MustCompile(`(?i)(sip|sips)`).MatchString(schema) {
-		statusLine.schema = schema
+		sl.schema = schema
 	} else {
-		statusLine.schema = "sip"
+		sl.schema = "sip"
 	}
 }
-func (statusLine *StatusLine) GetSchema() string {
-	return statusLine.schema
+func (sl *StatusLine) GetSchema() string {
+	return sl.schema
 }
-func (statusLine *StatusLine) SetVersion(version float64) {
-	statusLine.version = version
+func (sl *StatusLine) SetVersion(version float64) {
+	sl.version = version
 }
-func (statusLine *StatusLine) GetVersion() float64 {
-	return statusLine.version
+func (sl *StatusLine) GetVersion() float64 {
+	return sl.version
 }
-func (statusLine *StatusLine) SetStatusCode(statusCode uint) {
-	statusLine.statusCode = statusCode
+func (sl *StatusLine) SetStatusCode(statusCode uint) {
+	sl.statusCode = statusCode
 }
-func (statusLine *StatusLine) GetStatusCode() uint {
-	return statusLine.statusCode
+func (sl *StatusLine) GetStatusCode() uint {
+	return sl.statusCode
 }
-func (statusLine *StatusLine) SetReasonPhrase(reasonPhrease string) {
-	statusLine.reasonPhrase = reasonPhrease
+func (sl *StatusLine) SetReasonPhrase(reasonPhrease string) {
+	sl.reasonPhrase = reasonPhrease
 }
-func (statusLine *StatusLine) GetReasonPhrase() string {
-	return statusLine.reasonPhrase
+func (sl *StatusLine) GetReasonPhrase() string {
+	return sl.reasonPhrase
 }
-func (statusLine *StatusLine) GetIsOrder() bool {
-	return statusLine.isOrder
-}
-func (statusLine *StatusLine) GetOrder() []string {
-	result := make([]string, 0)
-	if statusLine.order == nil {
-		return result
-	}
-	for data := range statusLine.order {
-		result = append(result, data)
-	}
-	return result
-}
-func (statusLine *StatusLine) SetSource(source string) {
-	statusLine.source = source
-}
-func (statusLine *StatusLine) GetSource() string {
-	return statusLine.source
+func (sl *StatusLine) GetSource() string {
+	return sl.source
 }
 func NewStatusLine(schema string, version float64, statusCode uint, reasonPhrase string) *StatusLine {
 	return &StatusLine{
@@ -134,37 +116,26 @@ func NewStatusLine(schema string, version float64, statusCode uint, reasonPhrase
 		version:      version,
 		statusCode:   statusCode,
 		reasonPhrase: reasonPhrase,
-		isOrder:      false,
-		order:        make(chan string, 1024),
 	}
 }
-func (statusLine *StatusLine) Raw() string {
-	result := ""
-	if statusLine.isOrder {
-		for data := range statusLine.order {
-			result += data
-		}
-		statusLine.isOrder = false
-		result += "\r\n"
-		return result
-	}
-	if len(strings.TrimSpace(statusLine.schema)) == 0 {
-		statusLine.schema = "sip"
+func (sl *StatusLine) Raw() (result strings.Builder) {
+	if len(strings.TrimSpace(sl.schema)) == 0 {
+		sl.schema = "sip"
 	}
 	// schema: sip,sips,tel etc.
-	if len(strings.TrimSpace(statusLine.schema)) > 0 {
-		result += strings.ToUpper(statusLine.schema)
+	if len(strings.TrimSpace(sl.schema)) > 0 {
+		result.WriteString(strings.ToUpper(sl.schema))
 	}
 	// version: 2.0
-	result += fmt.Sprintf("/%1.1f", statusLine.version)
-	result += fmt.Sprintf(" %03d", statusLine.statusCode)
-	if len(strings.TrimSpace(statusLine.reasonPhrase)) > 0 {
-		result += fmt.Sprintf(" %s", statusLine.reasonPhrase)
+	result.WriteString(fmt.Sprintf("/%1.1f", sl.version))
+	result.WriteString(fmt.Sprintf(" %03d", sl.statusCode))
+	if len(strings.TrimSpace(sl.reasonPhrase)) > 0 {
+		result.WriteString(fmt.Sprintf(" %s", sl.reasonPhrase))
 	}
-	result += "\r\n"
+	result.WriteString("\r\n")
 	return result
 }
-func (statusLine *StatusLine) Parse(raw string) {
+func (sl *StatusLine) Parse(raw string) {
 	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
 	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
@@ -184,9 +155,7 @@ func (statusLine *StatusLine) Parse(raw string) {
 	if !schemaAndVersionRegexp.MatchString(raw) {
 		return
 	}
-	statusLine.source = raw
-	// status-line order
-	statusLine.statuslineOrder(raw)
+	sl.source = raw
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
 	// schema regexp
 	schemaRegexp := regexp.MustCompile(schemasRegexpStr)
@@ -198,34 +167,26 @@ func (statusLine *StatusLine) Parse(raw string) {
 		if schemaRegexp.MatchString(schemaAndVersion) {
 			schema := schemaRegexp.FindString(schemaAndVersion)
 			schema = stringTrimPrefixAndTrimSuffix(schema, " ")
-			statusLine.schema = schema
+			sl.schema = schema
 		}
 		if versionRegexp.MatchString(schemaAndVersion) {
 			versions := versionRegexp.Find([]byte(schemaAndVersion))
 			version, _ := strconv.ParseFloat(string(versions), 64)
-			statusLine.version = version
+			sl.version = version
 		}
 		raw = strings.ReplaceAll(raw, schemaAndVersion, "")
 	}
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
 	// status-code regexp
-	statusCodeRegexp := regexp.MustCompile(`\d{3}`)
+	statusCodeRegexp := regexp.MustCompile(`\d+`)
 	if statusCodeRegexp.MatchString(raw) {
 		statusCodes := statusCodeRegexp.FindString(raw)
 		statusCode, _ := strconv.Atoi(statusCodes)
-		statusLine.statusCode = uint(statusCode)
+		sl.statusCode = uint(statusCode)
 		raw = strings.ReplaceAll(raw, statusCodes, "")
 	}
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
 	if len(strings.TrimSpace(raw)) > 0 {
-		statusLine.reasonPhrase = raw
+		sl.reasonPhrase = raw
 	}
-}
-func (statusLine *StatusLine) statuslineOrder(raw string) {
-	if statusLine.order == nil {
-		statusLine.order = make(chan string, 1024)
-	}
-	statusLine.isOrder = true
-	defer close(statusLine.order)
-	statusLine.order <- raw
 }

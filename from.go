@@ -2,8 +2,11 @@ package sip
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
+	"sync"
 )
 
 // https://www.rfc-editor.org/rfc/rfc3261.html#section-8.1.1.3
@@ -83,21 +86,25 @@ import (
 // tag-param   =  "tag" EQUAL token
 
 type From struct {
-	field   string //"From" / "f"
-	name    string // display-name
-	spec    string // named spec of URI,recommend set be uri spec <uri>,example: <sip:xxx>/"sip:xxx"/sip:xxx
-	schema  string // sip,sips,tel etc.
-	user    string // user part
-	host    string // host part
-	port    string // port part
-	tag     string // tag
-	generic string // generic-param
-	source  string // from header line source string
+	field     string      //"From" / "f"
+	name      string      // display-name
+	spec      string      // named spec of URI,recommend set be uri spec <uri>,example: <sip:xxx>/"sip:xxx"/sip:xxx
+	schema    string      // sip,sips,tel etc.
+	user      string      // user part
+	host      string      // host part
+	port      uint16      // port part
+	tag       string      // tag
+	parameter sync.Map    // parameter-param
+	isOrder   bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
+	order     chan string // It is convenient to record the order of the original parameter fields when parsing
+	source    string      // source string
 }
 
 func (f *From) SetField(field string) {
 	if regexp.MustCompile(`^(?i)(from|f)$`).MatchString(field) {
 		f.field = strings.Title(field)
+	} else {
+		f.field = "From"
 	}
 }
 func (f *From) GetField() string {
@@ -133,10 +140,10 @@ func (f *From) SetHost(host string) {
 func (f *From) GetHost() string {
 	return f.host
 }
-func (f *From) SetPort(port string) {
+func (f *From) SetPort(port uint16) {
 	f.port = port
 }
-func (f *From) GetPort() string {
+func (f *From) GetPort() uint16 {
 	return f.port
 }
 func (f *From) SetTag(tag string) {
@@ -145,44 +152,41 @@ func (f *From) SetTag(tag string) {
 func (f *From) GetTag() string {
 	return f.tag
 }
-func (f *From) SetGeneric(generic string) {
-	f.generic = generic
+func (f *From) SetParameter(parameter sync.Map) {
+	f.parameter = parameter
 }
-func (f *From) GetGeneric() string {
-	return f.generic
-}
-func (f *From) SetSource(source string) {
-	f.source = source
+func (f *From) GetParameter() sync.Map {
+	return f.parameter
 }
 func (f *From) GetSource() string {
 	return f.source
 }
 
-func NewFrom(name, spec, schema, user, host, port, tag, generic string) *From {
+func NewFrom(name, spec, schema, user, host string, port uint16, tag string, parameter sync.Map) *From {
 	return &From{
-		name:    name,
-		spec:    spec,
-		schema:  schema,
-		user:    user,
-		host:    host,
-		port:    port,
-		tag:     tag,
-		generic: generic,
+		name:      name,
+		spec:      spec,
+		schema:    schema,
+		user:      user,
+		host:      host,
+		port:      port,
+		tag:       tag,
+		parameter: parameter,
+		isOrder:   false,
 	}
 }
 
-func (f *From) Raw() string {
-	result := ""
+func (f *From) Raw() (result strings.Builder) {
 	if len(strings.TrimSpace(f.field)) > 0 {
-		result += fmt.Sprintf("%s:", f.field)
+		result.WriteString(fmt.Sprintf("%s:", f.field))
 	} else {
-		result += fmt.Sprintf("%s:", strings.Title("From"))
+		result.WriteString(fmt.Sprintf("%s:", strings.Title("From")))
 	}
 	if len(strings.TrimSpace(f.name)) > 0 {
 		if strings.Contains(f.name, "\"") {
-			result += fmt.Sprintf(" %s", f.name)
+			result.WriteString(fmt.Sprintf(" %s", f.name))
 		} else {
-			result += fmt.Sprintf(" \"%s\"", f.name)
+			result.WriteString(fmt.Sprintf(" \"%s\"", f.name))
 		}
 	}
 	uri := ""
@@ -195,30 +199,84 @@ func (f *From) Raw() string {
 	if len(strings.TrimSpace(f.host)) > 0 {
 		uri += fmt.Sprintf("@%s", f.host)
 	}
-	if len(strings.TrimSpace(f.port)) > 0 {
-		uri += fmt.Sprintf(":%s", f.port)
+	if f.port > 0 {
+		uri += fmt.Sprintf(":%d", f.port)
 	}
 	if len(uri) > 0 {
 		switch strings.TrimSpace(f.spec) {
 		case "\"":
-			result += fmt.Sprintf(" \"%s\"", uri)
+			result.WriteString(fmt.Sprintf(" \"%s\"", uri))
 		case "'":
-			result += fmt.Sprintf(" '%s'", uri)
+			result.WriteString(fmt.Sprintf(" '%s'", uri))
 		case "<":
-			result += fmt.Sprintf(" <%s>", uri)
+			result.WriteString(fmt.Sprintf(" <%s>", uri))
 		default:
-			result += fmt.Sprintf(" %s", uri)
+			result.WriteString(fmt.Sprintf(" %s", uri))
 		}
 
 	}
 	if len(strings.TrimSpace(f.tag)) > 0 {
-		result += fmt.Sprintf(";tag=%s", f.tag)
+		result.WriteString(fmt.Sprintf(";tag=%s", f.tag))
 	}
-	if len(strings.TrimSpace(f.generic)) > 0 {
-		result += fmt.Sprintf(";%s", f.generic)
+	if f.isOrder {
+		f.isOrder = false
+		for orders := range f.order {
+			ordersSlice := strings.Split(orders, "=")
+			if len(ordersSlice) == 1 {
+				if val, ok := f.parameter.LoadAndDelete(ordersSlice[0]); ok {
+					if len(strings.TrimSpace(fmt.Sprintf("%v", val))) > 0 {
+						if strings.Contains(fmt.Sprintf("%v", val), "/") {
+							result.WriteString(fmt.Sprintf(";%v=\"%v\"", ordersSlice[0], val))
+						} else {
+							result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], val))
+						}
+					} else {
+						result.WriteString(fmt.Sprintf(";%v", ordersSlice[0]))
+					}
+
+				} else {
+					result.WriteString(fmt.Sprintf(";%v", ordersSlice[0]))
+				}
+			} else {
+				if val, ok := f.parameter.LoadAndDelete(ordersSlice[0]); ok {
+					if len(strings.TrimSpace(fmt.Sprintf("%v", val))) > 0 {
+						if strings.Contains(fmt.Sprintf("%v", val), "/") {
+							result.WriteString(fmt.Sprintf(";%v=\"%v\"", ordersSlice[0], val))
+						} else {
+							result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], val))
+						}
+					} else {
+						result.WriteString(fmt.Sprintf(";%v", ordersSlice[0]))
+					}
+
+				} else {
+					if len(strings.TrimSpace(fmt.Sprintf("%v", ordersSlice[1]))) > 0 {
+						result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], ordersSlice[1]))
+					} else {
+						result.WriteString(fmt.Sprintf(";%v", ordersSlice[0]))
+					}
+				}
+			}
+		}
 	}
-	result += "\r\n"
-	return result
+	f.parameter.Range(func(key, value interface{}) bool {
+		if reflect.ValueOf(value).IsValid() {
+			if reflect.ValueOf(value).IsZero() {
+				result.WriteString(fmt.Sprintf(";%v", key))
+				return true
+			}
+			if strings.Contains(fmt.Sprintf("%v", value), "/") {
+				result.WriteString(fmt.Sprintf(";%v=\"%v\"", key, value))
+			} else {
+				result.WriteString(fmt.Sprintf(";%v=%v", key, value))
+			}
+			return true
+		}
+		result.WriteString(fmt.Sprintf(";%v", key))
+		return true
+	})
+	result.WriteString("\r\n")
+	return
 }
 
 func (f *From) Parse(raw string) {
@@ -235,6 +293,7 @@ func (f *From) Parse(raw string) {
 	}
 	f.field = regexp.MustCompile(`:`).ReplaceAllString(fieldRegexp.FindString(raw), "")
 	f.source = raw
+	f.parameter = sync.Map{}
 	raw = fieldRegexp.ReplaceAllString(raw, "")
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
 
@@ -314,12 +373,13 @@ func (f *From) Parse(raw string) {
 	// port regexp
 	portRegexp := regexp.MustCompile(`.*?:\d+`)
 	if portRegexp.MatchString(raw) {
-		port := portRegexp.FindString(raw)
-		port = regexp.MustCompile(`.*:`).ReplaceAllString(port, "")
-		port = stringTrimPrefixAndTrimSuffix(port, " ")
-		if len(port) > 0 {
-			f.port = port
-			raw = regexp.MustCompile(`.*`+port).ReplaceAllString(raw, "")
+		ports := portRegexp.FindString(raw)
+		ports = regexp.MustCompile(`.*:`).ReplaceAllString(ports, "")
+		ports = stringTrimPrefixAndTrimSuffix(ports, " ")
+		if len(ports) > 0 {
+			port, _ := strconv.Atoi(ports)
+			f.port = uint16(port)
+			raw = regexp.MustCompile(`.*`+ports).ReplaceAllString(raw, "")
 		}
 	}
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
@@ -338,8 +398,37 @@ func (f *From) Parse(raw string) {
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
 	raw = stringTrimPrefixAndTrimSuffix(raw, ";")
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
-	// generic regexp
+	f.parameterOrder(raw)
+	// parameter regexp
 	if len(raw) > 0 {
-		f.generic = raw
+		rawSlice := strings.Split(raw, ";")
+		if len(rawSlice) == 1 {
+			kvs := strings.Split(rawSlice[0], "=")
+			if len(kvs) == 1 {
+				f.parameter.Store(kvs[0], "")
+			} else {
+				f.parameter.Store(kvs[0], kvs[1])
+			}
+		} else {
+			for _, raws := range rawSlice {
+				kvs := strings.Split(raws, "=")
+				if len(kvs) == 1 {
+					f.parameter.Store(kvs[0], "")
+				} else {
+					f.parameter.Store(kvs[0], kvs[1])
+				}
+			}
+		}
+	}
+}
+func (f *From) parameterOrder(raw string) {
+	f.isOrder = true
+	f.order = make(chan string, 1024)
+	defer close(f.order)
+	raw = stringTrimPrefixAndTrimSuffix(raw, ";")
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	rawSlice := strings.Split(raw, ";")
+	for _, raws := range rawSlice {
+		f.order <- raws
 	}
 }
