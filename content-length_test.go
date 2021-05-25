@@ -7,7 +7,8 @@ import (
 
 func TestContentLength_Raw(t *testing.T) {
 	l := NewContentLength(0)
-	fmt.Print(l.Raw())
+	result := l.Raw()
+	fmt.Println(result.String())
 }
 
 func TestContentLength_Parse(t *testing.T) {
@@ -20,7 +21,8 @@ func TestContentLength_Parse(t *testing.T) {
 		l := new(ContentLength)
 		l.Parse(raw)
 		if len(l.GetSource()) > 0 {
-			fmt.Print(l.Raw())
+			result := l.Raw()
+			fmt.Println(result.String())
 			fmt.Println(l.GetField(), l.GetLength())
 		}
 	}

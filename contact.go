@@ -91,19 +91,19 @@ import (
 // qvalue         =  ( "0" [ "." 0*3DIGIT ] )/ ( "1" [ "." 0*3("0") ] )
 
 type Contact struct {
-	field   string      // "Contact" / "m"
-	name    string      // display-name
-	spec    string      // named spec of URI,recommend set be uri spec <uri>,example: <sip:xxx>/"sip:xxx"/sip:xxx
-	schema  string      // sip,sips,tel etc.
-	user    string      // user part
-	host    string      // host part
-	port    uint16      // port part
-	q       string      // c-p-q  =  "q" EQUAL qvalue,qvalue = ( "0" [ "." 0*3DIGIT ] )/ ( "1" [ "." 0*3("0") ] )
-	expires int         // c-p-expires =  "expires" EQUAL delta-seconds,delta-seconds = 1*DIGIT
-	generic sync.Map    // generic-param,contact-extension = generic-param,generic-param =  token [ EQUAL gen-value ]
-	isOrder bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
-	order   chan string // It is convenient to record the order of the original parameter fields when parsing
-	source  string      // source string
+	field     string      // "Contact" / "m"
+	name      string      // display-name
+	spec      string      // named spec of URI,recommend set be uri spec <uri>,example: <sip:xxx>/"sip:xxx"/sip:xxx
+	schema    string      // sip,sips,tel etc.
+	user      string      // user part
+	host      string      // host part
+	port      uint16      // port part
+	q         string      // c-p-q  =  "q" EQUAL qvalue,qvalue = ( "0" [ "." 0*3DIGIT ] )/ ( "1" [ "." 0*3("0") ] )
+	expires   int         // c-p-expires =  "expires" EQUAL delta-seconds,delta-seconds = 1*DIGIT
+	parameter sync.Map    // generic-param,contact-extension = generic-param,generic-param =  token [ EQUAL gen-value ]
+	isOrder   bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
+	order     chan string // It is convenient to record the order of the original parameter fields when parsing
+	source    string      // source string
 }
 
 func (m *Contact) SetField(field string) {
@@ -164,50 +164,49 @@ func (m *Contact) SetExpires(expires int) {
 func (m *Contact) GetExpires() int {
 	return m.expires
 }
-func (m *Contact) SetGeneric(generic sync.Map) {
-	m.generic = generic
+func (m *Contact) SetParameter(parameter sync.Map) {
+	m.parameter = parameter
 }
-func (m *Contact) GetGeneric() sync.Map {
-	return m.generic
+func (m *Contact) GetParameter() sync.Map {
+	return m.parameter
 }
 func (m *Contact) GetSource() string {
 	return m.source
 }
 
-func NewContact(name, spec, schema, user, host string, port uint16, q string, expires int, generic sync.Map) *Contact {
+func NewContact(name, spec, schema, user, host string, port uint16, q string, expires int, parameter sync.Map) *Contact {
 	return &Contact{
-		field:   "Contact",
-		name:    name,
-		spec:    spec,
-		schema:  schema,
-		user:    user,
-		host:    host,
-		port:    port,
-		q:       q,
-		expires: expires,
-		generic: generic,
-		isOrder: false,
+		field:     "Contact",
+		name:      name,
+		spec:      spec,
+		schema:    schema,
+		user:      user,
+		host:      host,
+		port:      port,
+		q:         q,
+		expires:   expires,
+		parameter: parameter,
+		isOrder:   false,
 	}
 }
-func (m *Contact) Raw() string {
-	result := ""
-	if m.isOrder {
-		for data := range m.order {
-			result += data
-		}
-		m.isOrder = false
-		result += "\r\n"
-		return result
-	}
+func (m *Contact) Raw() (result strings.Builder) {
+	// if m.isOrder {
+	// 	for data := range m.order {
+	// 		result += data
+	// 	}
+	// 	m.isOrder = false
+	// 	result += "\r\n"
+	// 	return result
+	// }
 	if len(strings.TrimSpace(m.field)) == 0 {
 		m.field = "Contact"
 	}
-	result += fmt.Sprintf("%s:", strings.Title(m.field))
+	result.WriteString(fmt.Sprintf("%s:", strings.Title(m.field)))
 	if len(strings.TrimSpace(m.name)) > 0 {
 		if strings.Contains(m.name, "\"") {
-			result += fmt.Sprintf(" %s", m.name)
+			result.WriteString(fmt.Sprintf(" %s", m.name))
 		} else {
-			result += fmt.Sprintf(" \"%s\"", m.name)
+			result.WriteString(fmt.Sprintf(" \"%s\"", m.name))
 		}
 	}
 	uri := ""
@@ -226,37 +225,62 @@ func (m *Contact) Raw() string {
 	if len(uri) > 0 {
 		switch strings.TrimSpace(m.spec) {
 		case "\"":
-			result += fmt.Sprintf(" \"%s\"", uri)
+			result.WriteString(fmt.Sprintf(" \"%s\"", uri))
 		case "'":
-			result += fmt.Sprintf(" '%s'", uri)
+			result.WriteString(fmt.Sprintf(" '%s'", uri))
 		case "<":
-			result += fmt.Sprintf(" <%s>", uri)
+			result.WriteString(fmt.Sprintf(" <%s>", uri))
 		default:
-			result += fmt.Sprintf(" %s", uri)
+			result.WriteString(fmt.Sprintf(" %s", uri))
 		}
+	}
+	if m.isOrder {
+		m.isOrder = false
+		for orders := range m.order {
+			if regexp.MustCompile(`(?i)(q)( )*=`).MatchString(orders) {
+				if len(strings.TrimSpace(m.q)) > 0 {
+					result.WriteString(fmt.Sprintf(";q=%s", m.q))
+					continue
+				}
+			}
+			if regexp.MustCompile(`(?i)(expires)( )*=`).MatchString(orders) {
+				if m.expires >= 0 {
+					result.WriteString(fmt.Sprintf(";expires=%d", m.expires))
+					continue
+				}
+			}
+			ordersSlice := strings.Split(orders, "=")
+			if len(ordersSlice) == 1 {
+				if val, ok := m.parameter.LoadAndDelete(ordersSlice[0]); ok {
+					result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], val))
+				} else {
+					result.WriteString(fmt.Sprintf(";%v", ordersSlice[0]))
+				}
+			} else {
+				if val, ok := m.parameter.LoadAndDelete(ordersSlice[0]); ok {
+					result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], val))
+				} else {
+					result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], ordersSlice[1]))
+				}
+			}
+		}
+	}
 
-	}
-	if len(strings.TrimSpace(m.q)) > 0 {
-		result += fmt.Sprintf(";q=%s", m.q)
-	}
-	if m.expires >= 0 {
-		result += fmt.Sprintf(";expires=%v", m.expires)
-	}
-	m.generic.Range(func(key, value interface{}) bool {
+	m.parameter.Range(func(key, value interface{}) bool {
+		fmt.Println(key, value)
 		if reflect.ValueOf(value).IsValid() {
 			if reflect.ValueOf(value).IsZero() {
-				result += fmt.Sprintf(";%v", key)
+				result.WriteString(fmt.Sprintf(";%v", key))
 				return true
 			}
-			result += fmt.Sprintf(";%v=\"%v\"", key, value)
+			result.WriteString(fmt.Sprintf(";%v=\"%v\"", key, value))
 			return true
 		}
-		result += fmt.Sprintf(";%v", key)
+		result.WriteString(fmt.Sprintf(";%v", key))
 		return true
 	})
-	result = strings.TrimSuffix(result, ";")
-	result += "\r\n"
-	return result
+	result.WriteString("\r\n")
+	return
 }
 
 func (m *Contact) Parse(raw string) {
@@ -272,9 +296,8 @@ func (m *Contact) Parse(raw string) {
 		return
 	}
 	m.source = raw
-	m.generic = sync.Map{}
-	// contact order
-	m.contactOrder(raw)
+	m.parameter = sync.Map{}
+
 	m.field = regexp.MustCompile(`:`).ReplaceAllString(fieldRegexp.FindString(raw), "")
 	raw = fieldRegexp.ReplaceAllString(raw, "")
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
@@ -363,12 +386,20 @@ func (m *Contact) Parse(raw string) {
 		}
 	}
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	raw = stringTrimPrefixAndTrimSuffix(raw, ">")
+	raw = stringTrimPrefixAndTrimSuffix(raw, "<")
 	raw = stringTrimPrefixAndTrimSuffix(raw, ";")
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	if len(strings.TrimSpace(raw)) == 0 {
+		return
+	}
+	// contact order
+	m.contactOrder(raw)
 	// q regexp
 	qRegexp := regexp.MustCompile(`((?i)(?:^q))( )*=`)
 	// expires regexp
 	expiresRegexp := regexp.MustCompile(`((?i)(?:^expires))( )*=`)
+	m.expires = -1
 	rawSlice := strings.Split(raw, ";")
 	for _, raws := range rawSlice {
 		raws = stringTrimPrefixAndTrimSuffix(raws, " ")
@@ -387,20 +418,25 @@ func (m *Contact) Parse(raw string) {
 				m.expires = expire
 			}
 		default:
-			// generic regexp
+			// generic parameter regexp
 			kvs := strings.Split(raws, "=")
 			if len(kvs) == 1 {
-				m.generic.Store(kvs[0], "")
+				m.parameter.Store(kvs[0], "")
 			} else {
-				m.generic.Store(kvs[0], kvs[1])
+				m.parameter.Store(kvs[0], kvs[1])
 			}
 		}
 	}
 
 }
 func (m *Contact) contactOrder(raw string) {
-	m.order = make(chan string, 1024)
 	m.isOrder = true
+	m.order = make(chan string, 1024)
 	defer close(m.order)
-	m.order <- raw
+	raw = stringTrimPrefixAndTrimSuffix(raw, ";")
+	raw = stringTrimPrefixAndTrimSuffix(raw, ";")
+	rawSlice := strings.Split(raw, ";")
+	for _, raws := range rawSlice {
+		m.order <- raws
+	}
 }

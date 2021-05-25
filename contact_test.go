@@ -13,14 +13,15 @@ func TestContact_Raw(t *testing.T) {
 		NewContact("display name", "", "sips", "34020000001320000001", "192.168.0.1", 5060, "", 3600, sync.Map{}),
 	}
 	for _, m := range ms {
-		fmt.Print(m.Raw())
+		result := m.Raw()
+		fmt.Print(result.String())
 
 	}
 }
 
 func TestContact_Parse(t *testing.T) {
 	raws := []string{
-		"Contact: <sip:34020000001320000001@192.168.0.1:5060>;q=0.7;expires=3600",
+		"Contact: <sip:34020000001320000001@192.168.0.1:5060>;expires=3600;q=0.7",
 		"Contact: tel:34020000001320000001@192.168.0.1:5060;q=0.7;expires=3600",
 		"m  : \"display name\" sips:34020000001320000001@192.168.0.1:5060;",
 	}
@@ -28,7 +29,8 @@ func TestContact_Parse(t *testing.T) {
 		m := new(Contact)
 		m.Parse(raw)
 		if len(m.GetSource()) > 0 {
-			fmt.Print(m.Raw())
+			result := m.Raw()
+			fmt.Print(result.String())
 			fmt.Println(m.GetField(), m.GetName(), m.GetUser(), m.GetHost(), m.GetPort(), m.GetExpires(), m.GetQ())
 		}
 	}

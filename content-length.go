@@ -38,11 +38,9 @@ import (
 // Content-Length  =  ( "Content-Length" / "l" ) HCOLON 1*DIGIT
 //
 type ContentLength struct {
-	field   string //"Content-Length" / "l"
-	length  uint
-	isOrder bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
-	order   chan string // It is convenient to record the order of the original parameter fields when parsing
-	source  string      // source string
+	field  string //"Content-Length" / "l"
+	length uint
+	source string // source string
 }
 
 //"Content-Length" / "l"
@@ -69,30 +67,19 @@ func (l *ContentLength) GetSource() string {
 }
 func NewContentLength(length uint) *ContentLength {
 	return &ContentLength{
-		field:   "Content-Length",
-		length:  length,
-		isOrder: false,
+		field:  "Content-Length",
+		length: length,
 	}
 }
-func (l *ContentLength) Raw() string {
-	result := ""
-	if l.isOrder {
-		for data := range l.order {
-			result += data
-		}
-		l.isOrder = false
-		result += "\r\n"
-		return result
-	}
-
+func (l *ContentLength) Raw() (result strings.Builder) {
 	// "Content-Length"
 	if len(strings.TrimSpace(l.field)) == 0 {
 		l.field = "Content-Length"
 	}
-	result += fmt.Sprintf("%s:", l.field)
-	result += fmt.Sprintf(" %d", l.length)
-	result += "\r\n"
-	return result
+	result.WriteString(fmt.Sprintf("%s:", l.field))
+	result.WriteString(fmt.Sprintf(" %d", l.length))
+	result.WriteString("\r\n")
+	return
 }
 func (l *ContentLength) Parse(raw string) {
 	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
@@ -107,8 +94,6 @@ func (l *ContentLength) Parse(raw string) {
 		return
 	}
 	l.source = raw
-	// content-length order
-	l.contentlengthOrder(raw)
 	field := fieldRegexp.FindString(raw)
 	field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
 	field = stringTrimPrefixAndTrimSuffix(field, " ")
@@ -120,10 +105,4 @@ func (l *ContentLength) Parse(raw string) {
 		length, _ := strconv.Atoi(lengths)
 		l.length = uint(length)
 	}
-}
-func (l *ContentLength) contentlengthOrder(raw string) {
-	l.order = make(chan string, 1024)
-	l.isOrder = true
-	defer close(l.order)
-	l.order <- raw
 }

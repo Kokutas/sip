@@ -117,6 +117,7 @@ func (c *ContentType) Raw() (result strings.Builder) {
 		}
 	}
 	if c.isOrder {
+		c.isOrder = false
 		for orders := range c.order {
 			ordersSlice := strings.Split(orders, "=")
 			if len(ordersSlice) == 1 {
@@ -227,6 +228,7 @@ func (c *ContentType) contenttypeOrder(raw string) {
 	c.isOrder = true
 	c.order = make(chan string, 1024)
 	defer close(c.order)
+	raw = stringTrimPrefixAndTrimSuffix(raw, ";")
 	raw = stringTrimPrefixAndTrimSuffix(raw, ";")
 	rawSlice := strings.Split(raw, ";")
 	for _, raws := range rawSlice {
