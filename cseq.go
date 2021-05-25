@@ -46,15 +46,19 @@ import (
 // CSeq  =  "CSeq" HCOLON 1*DIGIT LWS Method
 
 type CSeq struct {
-	field  string // "CSeq"
-	number uint32 // sequence number
-	method string // method
-	source string // cseq header line source string
+	field   string      // "CSeq"
+	number  uint32      // sequence number
+	method  string      // method
+	isOrder bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
+	order   chan string // It is convenient to record the order of the original parameter fields when parsing
+	source  string      // source string
 }
 
 func (cSeq *CSeq) SetField(field string) {
 	if regexp.MustCompile(`^(?i)(cseq)$`).MatchString(field) {
 		cSeq.field = strings.Title(field)
+	} else {
+		cSeq.field = "CSeq"
 	}
 }
 func (cSeq *CSeq) GetField() string {
@@ -72,25 +76,31 @@ func (cSeq *CSeq) SetMethod(method string) {
 func (cSeq *CSeq) GetMethod() string {
 	return cSeq.method
 }
-func (cSeq *CSeq) SetSource(source string) {
-	cSeq.source = source
-}
 func (cSeq *CSeq) GetSource() string {
 	return cSeq.source
 }
 func NewCSeq(number uint32, method string) *CSeq {
 	return &CSeq{
-		number: number,
-		method: method,
+		field:   "CSeq",
+		number:  number,
+		method:  method,
+		isOrder: false,
 	}
 }
 func (cSeq *CSeq) Raw() string {
 	result := ""
-	if len(strings.TrimSpace(cSeq.field)) > 0 {
-		result += fmt.Sprintf("%s:", cSeq.field)
-	} else {
-		result += "CSeq:"
+	if cSeq.isOrder {
+		for data := range cSeq.order {
+			result += data
+		}
+		cSeq.isOrder = false
+		result += "\r\n"
+		return result
 	}
+	if len(strings.TrimSpace(cSeq.field)) == 0 {
+		cSeq.field = "CSeq"
+	}
+	result += fmt.Sprintf("%s:", cSeq.field)
 	result += fmt.Sprintf(" %d", cSeq.number)
 	if len(strings.TrimSpace(cSeq.method)) > 0 {
 		result += fmt.Sprintf(" %s", strings.ToUpper(cSeq.method))
@@ -105,13 +115,15 @@ func (cSeq *CSeq) Parse(raw string) {
 	if len(strings.TrimSpace(raw)) == 0 {
 		return
 	}
-	// cseq field regexp
+	// field regexp
 	fieldRegexp := regexp.MustCompile(`^(?i)(cseq)( )*:`)
 	if !fieldRegexp.MatchString(raw) {
 		return
 	}
 	cSeq.field = regexp.MustCompile(`:`).ReplaceAllString(fieldRegexp.FindString(raw), "")
 	cSeq.source = raw
+	// cseq order
+	cSeq.cseqOrder(raw)
 	raw = fieldRegexp.ReplaceAllString(raw, "")
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
 	// sequence number regexp
@@ -126,8 +138,25 @@ func (cSeq *CSeq) Parse(raw string) {
 		}
 	}
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	// method regexp string
+	methodsRegexpStr := `^(?i)(`
+	for _, v := range methods {
+		methodsRegexpStr += v + "|"
+	}
+	methodsRegexpStr = strings.TrimSuffix(methodsRegexpStr, "|")
+	methodsRegexpStr += ")( )?"
+	// method regexp
+	methodRegexp := regexp.MustCompile(methodsRegexpStr)
 	// method regexp
 	if len(raw) > 0 {
-		cSeq.method = raw
+		if methodRegexp.MatchString(raw) {
+			cSeq.method = methodRegexp.FindString(raw)
+		}
 	}
+}
+func (cSeq *CSeq) cseqOrder(raw string) {
+	cSeq.order = make(chan string, 1024)
+	cSeq.isOrder = true
+	defer close(cSeq.order)
+	cSeq.order <- raw
 }

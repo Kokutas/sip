@@ -19,7 +19,8 @@ func TestCSeq_Parse(t *testing.T) {
 	for _, raw := range raws {
 		cseq := new(CSeq)
 		cseq.Parse(raw)
-		if len(cseq.source) > 0 {
+		if len(cseq.GetSource()) > 0 {
+			fmt.Println(cseq.GetField(), cseq.GetNumber(), cseq.GetMethod())
 			fmt.Print(cseq.Raw())
 		}
 
