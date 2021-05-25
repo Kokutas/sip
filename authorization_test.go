@@ -52,6 +52,7 @@ func TestAuthorization_Parse(t *testing.T) {
 	raws := []string{
 		`Authorization: Digest username="34020000001320000001", realm="3402000000", uri="sip:34020000001320000001@192.168.0.26:5060", Response="6629fae49393a05397450978507c4ef1", algorithm=MD5,noNce="cesP", CNonce="0a4f113b", opaque="5ccc069c403ebaf9f0171e9517f40e41", qop=auth, nc=00000001`,
 		`Authorization: Digest username="bob", realm="biloxi.com", uri="sip:bob@biloxi.com", response="6629fae49393a05397450978507c4ef1", algorithm=MD5,nonce=456, cnonce="0a4f113b", opaque="5ccc069c403ebaf9f0171e9517f40e41", qop=auth, nc=00000001,hello=word`,
+		`Authorization: Digest username="bob", uri="sip:bob@biloxi.com", realm="biloxi.com", response="6629fae49393a05397450978507c4ef1", algorithm=MD5,nonce=456, cnonce="0a4f113b", opaque="5ccc069c403ebaf9f0171e9517f40e41", qop=auth, nc=00000001,hello=word`,
 	}
 	for index, raw := range raws {
 		authorization := new(Authorization)

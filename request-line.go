@@ -190,7 +190,8 @@ func (requestLine *RequestLine) Raw() string {
 	}
 	// SIP-URI/SIPS-URI
 	if requestLine.requestUri != nil {
-		result += fmt.Sprintf(" %s", requestLine.requestUri.Raw())
+		uri := requestLine.requestUri.Raw()
+		result += fmt.Sprintf(" %s", uri.String())
 	}
 	// schema: sip,sips,tel etc.
 	if len(strings.TrimSpace(requestLine.schema)) > 0 {

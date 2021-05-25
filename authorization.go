@@ -347,7 +347,8 @@ func (authorization *Authorization) Raw() (result strings.Builder) {
 			if regexp.MustCompile(`((?i)(uri))( )*=`).MatchString(orders) {
 				// digest-uri = "uri" EQUAL LDQUOT digest-uri-value RDQUOT,digest-uri-value = rquest-uri ; Equal to request-uri as specified by HTTP/1.1
 				if authorization.uri != nil {
-					result.WriteString(fmt.Sprintf(" uri=\"%s\",", authorization.uri.Raw()))
+					uri := authorization.uri.Raw()
+					result.WriteString(fmt.Sprintf(" uri=\"%s\",", uri.String()))
 				}
 				continue
 			}
@@ -428,7 +429,8 @@ func (authorization *Authorization) Raw() (result strings.Builder) {
 		}
 		// digest-uri = "uri" EQUAL LDQUOT digest-uri-value RDQUOT,digest-uri-value = rquest-uri ; Equal to request-uri as specified by HTTP/1.1
 		if authorization.uri != nil {
-			result.WriteString(fmt.Sprintf(" uri=\"%s\",", authorization.uri.Raw()))
+			uri := authorization.uri.Raw()
+			result.WriteString(fmt.Sprintf(" uri=\"%s\",", uri.String()))
 		}
 		// dresponse = "response" EQUAL request-digest, request-digest = LDQUOT 32LHEX RDQUOT
 		if len(strings.TrimSpace(authorization.response)) > 0 {

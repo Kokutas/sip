@@ -1,5 +1,7 @@
 package sip
 
+import "strings"
+
 // https://www.rfc-editor.org/rfc/rfc3261.html#section-8.1.1.1
 //
 // 8.1.1.1 Request-URI
@@ -118,7 +120,7 @@ func NewRequestUri(sipUri *SipUri) *RequestUri {
 		sipUri: sipUri,
 	}
 }
-func (requestUri *RequestUri) Raw() string {
+func (requestUri *RequestUri) Raw() (result strings.Builder) {
 	if requestUri.sipUri == nil {
 		requestUri.sipUri = new(SipUri)
 	}

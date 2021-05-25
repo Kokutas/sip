@@ -9,20 +9,32 @@ import (
 
 func TestUriParameters_Raw(t *testing.T) {
 	uriParameters := NewUriParameters("udp", "34020000001320000001", "REGISTER", 5, "192.168.0.1", true, sync.Map{})
-	fmt.Println(uriParameters.Raw())
+	result := uriParameters.Raw()
+	fmt.Println(result.String())
 }
 
 func TestUriParameters_Parse(t *testing.T) {
-	raw := ";transport=udp;user=34020000001320000001;method=REGISTER;maddr=192.168.0.1;lr;ttl=5;;"
-	uriParameters := new(UriParameters)
-	uriParameters.Parse(raw)
-	fmt.Println(raw)
-	fmt.Println(uriParameters.Raw())
+	raws := []string{
+		";transport=udp;user=34020000001320000001;method=REGISTER;maddr=192.168.0.1;lr;ttl=5;;",
+		";transport=udp;user=34020000001320000001;maddr=192.168.0.1;lr;ttl=5;;method=REGISTER",
+	}
+	for index, raw := range raws {
+		uriParameters := new(UriParameters)
+		uriParameters.Parse(raw)
+		if len(uriParameters.GetSource()) > 0 {
+			fmt.Println("index: ", index, ",transport: ", uriParameters.GetTransport(), ",user: ", uriParameters.GetUser(), ",ttl: ", uriParameters.GetTtl(), ",maddr: ", uriParameters.GetMaddr(), ",lr: ", uriParameters.GetLr(), ",method: ", uriParameters.GetMethod())
+			result := uriParameters.Raw()
+			fmt.Println(result.String())
+		}
+
+	}
+
 }
 
 func TestHostPort_Raw(t *testing.T) {
 	hostport := NewHostPort("www.baidu.com", nil, nil, 5060)
-	fmt.Println(hostport.Raw())
+	result := hostport.Raw()
+	fmt.Println(result.String())
 }
 
 func TestHostPort_Parse(t *testing.T) {
@@ -36,16 +48,18 @@ func TestHostPort_Parse(t *testing.T) {
 	for _, raw := range raws {
 		hostport := new(HostPort)
 		hostport.Parse(raw)
-		if len(hostport.source) > 0 {
+		if len(hostport.GetSource()) > 0 {
 			fmt.Println("hostname:", hostport.hostname, ",ipv4:", hostport.ipv4Address.String(), ",ipv6:", hostport.ipv6Reference, ",port:", hostport.port)
-			fmt.Println(hostport.Raw())
+			result := hostport.Raw()
+			fmt.Println(result.String())
 		}
 	}
 }
 
 func TestUserInfo_Raw(t *testing.T) {
 	userInfo := NewUserInfo("34020000001320000001", "", "Ali12345")
-	fmt.Println(userInfo.Raw())
+	result := userInfo.Raw()
+	fmt.Println(result.String())
 }
 
 func TestUserInfo_Parse(t *testing.T) {
@@ -75,8 +89,10 @@ func TestUserInfo_Parse(t *testing.T) {
 	for _, raw := range raws {
 		userinfo := new(UserInfo)
 		userinfo.Parse(raw)
-		if len(userinfo.source) > 0 {
-			fmt.Println("user:", userinfo.user, ",telephone:", userinfo.telephoneSubscriber, ",password:", userinfo.password)
+		if len(userinfo.GetSource()) > 0 {
+			fmt.Println("user:", userinfo.GetUser(), ",telephone:", userinfo.GetTelephoneSubscriber(), ",password:", userinfo.GetPassword())
+			result := userinfo.Raw()
+			fmt.Println(result.String())
 		}
 	}
 }
@@ -89,7 +105,8 @@ func TestSipUri_Raw(t *testing.T) {
 	sipUri := NewSipUri(NewUserInfo("34020000001320000001", "+086-17621400864", "Ali12345"),
 		NewHostPort("www.baidu.com", net.IPv4(192, 168, 0, 1), nil, 5060),
 		NewUriParameters("udp", "kokutas", "register", 5, "192.168.0.26", true, sync.Map{}), headers)
-	fmt.Println(sipUri.Raw())
+	result := sipUri.Raw()
+	fmt.Println(result.String())
 }
 
 func TestSipUri_Parse(t *testing.T) {
@@ -101,7 +118,7 @@ func TestSipUri_Parse(t *testing.T) {
 	for index, raw := range raws {
 		sipUri := new(SipUri)
 		sipUri.Parse(raw)
-		if len(sipUri.source) > 0 {
+		if len(sipUri.GetSource()) > 0 {
 			fmt.Println(index, "schema:", sipUri.schema)
 			fmt.Println(index, "userinfo-user:", sipUri.userinfo.user)
 			fmt.Println(index, "userinfo-telephone-subscriber:", sipUri.userinfo.telephoneSubscriber)
@@ -120,6 +137,8 @@ func TestSipUri_Parse(t *testing.T) {
 				fmt.Println(index, key, value)
 				return true
 			})
+			result := sipUri.Raw()
+			fmt.Println(index, result.String())
 		}
 	}
 }
