@@ -187,7 +187,6 @@ func NewContact(name, spec, schema, user, host string, port uint16, q string, ex
 		expires: expires,
 		generic: generic,
 		isOrder: false,
-		order:   make(chan string, 1024),
 	}
 }
 func (m *Contact) Raw() string {
@@ -273,6 +272,7 @@ func (m *Contact) Parse(raw string) {
 		return
 	}
 	m.source = raw
+	m.generic = sync.Map{}
 	// contact order
 	m.contactOrder(raw)
 	m.field = regexp.MustCompile(`:`).ReplaceAllString(fieldRegexp.FindString(raw), "")
@@ -399,9 +399,7 @@ func (m *Contact) Parse(raw string) {
 
 }
 func (m *Contact) contactOrder(raw string) {
-	if m.order == nil {
-		m.order = make(chan string, 1024)
-	}
+	m.order = make(chan string, 1024)
 	m.isOrder = true
 	defer close(m.order)
 	m.order <- raw

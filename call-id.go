@@ -117,7 +117,6 @@ func NewCallID(localId string, host string) *CallID {
 		localId: localId,
 		host:    host,
 		isOrder: false,
-		order:   make(chan string, 1024),
 	}
 }
 func (i *CallID) Raw() string {
@@ -183,9 +182,7 @@ func (i *CallID) Parse(raw string) {
 	}
 }
 func (i *CallID) callidOrder(raw string) {
-	if i.order == nil {
-		i.order = make(chan string, 1024)
-	}
+	i.order = make(chan string, 1024)
 	i.isOrder = true
 	defer close(i.order)
 	i.order <- raw

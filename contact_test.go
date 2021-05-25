@@ -29,7 +29,7 @@ func TestContact_Parse(t *testing.T) {
 		m.Parse(raw)
 		if len(m.GetSource()) > 0 {
 			fmt.Print(m.Raw())
-			fmt.Println(m.GetField(), m.GetHost(), m.GetPort(), m.GetExpires(), m.GetQ())
+			fmt.Println(m.GetField(), m.GetName(), m.GetUser(), m.GetHost(), m.GetPort(), m.GetExpires(), m.GetQ())
 		}
 	}
 }

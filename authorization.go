@@ -493,9 +493,7 @@ func (authorization *Authorization) Parse(raw string) {
 
 }
 func (authorization *Authorization) authorizationOrder(raw string) {
-	if authorization.order == nil {
-		authorization.order = make(chan string, 1024)
-	}
+	authorization.order = make(chan string, 1024)
 	authorization.isOrder = true
 	defer close(authorization.order)
 	authorization.order <- raw
