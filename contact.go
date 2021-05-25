@@ -248,13 +248,22 @@ func (m *Contact) Raw() (result strings.Builder) {
 			ordersSlice := strings.Split(orders, "=")
 			if len(ordersSlice) == 1 {
 				if val, ok := m.parameter.LoadAndDelete(ordersSlice[0]); ok {
-					result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], val))
+					if len(strings.TrimSpace(fmt.Sprintf("%v", val))) > 0 {
+						result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], val))
+					} else {
+						result.WriteString(fmt.Sprintf(";%v", ordersSlice[0]))
+					}
+
 				} else {
 					result.WriteString(fmt.Sprintf(";%v", ordersSlice[0]))
 				}
 			} else {
 				if val, ok := m.parameter.LoadAndDelete(ordersSlice[0]); ok {
-					result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], val))
+					if len(strings.TrimSpace(fmt.Sprintf("%v", val))) > 0 {
+						result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], val))
+					} else {
+						result.WriteString(fmt.Sprintf(";%v", ordersSlice[0]))
+					}
 				} else {
 					result.WriteString(fmt.Sprintf(";%v=%v", ordersSlice[0], ordersSlice[1]))
 				}
