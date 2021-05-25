@@ -94,7 +94,7 @@ func (r *Route) Parse(raw string) {
 	}
 	r.field = regexp.MustCompile(`:`).ReplaceAllString(fieldRegexp.FindString(raw), "")
 	r.source = raw
-	r.nameAddrs = make([]*NameAddr, 3)
+	r.nameAddrs = make([]*NameAddr, 0)
 	raw = fieldRegexp.ReplaceAllString(raw, "")
 	raw = stringTrimPrefixAndTrimSuffix(raw, ",")
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
