@@ -85,7 +85,7 @@ type CallID struct {
 }
 
 func (i *CallID) SetField(field string) {
-	if regexp.MustCompile(`(?i)(call-id|i)`).MatchString(field) {
+	if regexp.MustCompile(`^(?i)(call-id|i)$`).MatchString(field) {
 		i.field = field
 	} else {
 		i.field = "Call-ID"

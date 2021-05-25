@@ -173,7 +173,11 @@ type Authorization struct {
 
 // "Authorization"
 func (authorization *Authorization) SetField(field string) {
-	authorization.field = strings.Title(field)
+	if regexp.MustCompile(`^(?i)(authorization)$`).MatchString(field) {
+		authorization.field = strings.Title(field)
+	} else {
+		authorization.field = strings.Title("Authorization")
+	}
 }
 func (authorization *Authorization) GetField() string {
 	return authorization.field

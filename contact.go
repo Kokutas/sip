@@ -2,8 +2,11 @@ package sip
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
+	"sync"
 )
 
 // https://www.rfc-editor.org/rfc/rfc3261.html#section-8.1.1.8
@@ -84,24 +87,30 @@ import (
 // c-p-expires        =  "expires" EQUAL delta-seconds
 // contact-extension  =  generic-param
 // delta-seconds      =  1*DIGIT
+// generic-param  =  token [ EQUAL gen-value ]
+// qvalue         =  ( "0" [ "." 0*3DIGIT ] )/ ( "1" [ "." 0*3("0") ] )
 
 type Contact struct {
-	field   string // "Contact" / "m"
-	name    string // display-name
-	spec    string // named spec of URI,recommend set be uri spec <uri>,example: <sip:xxx>/"sip:xxx"/sip:xxx
-	schema  string // sip,sips,tel etc.
-	user    string // user part
-	host    string // host part
-	port    string // port part
-	q       string // c-p-q  =  "q" EQUAL qvalue
-	expires string // c-p-expires =  "expires" EQUAL delta-seconds,delta-seconds = 1*DIGIT
-	generic string // generic-param,contact-extension = generic-param
-	source  string // contact header line source string
+	field   string      // "Contact" / "m"
+	name    string      // display-name
+	spec    string      // named spec of URI,recommend set be uri spec <uri>,example: <sip:xxx>/"sip:xxx"/sip:xxx
+	schema  string      // sip,sips,tel etc.
+	user    string      // user part
+	host    string      // host part
+	port    uint16      // port part
+	q       string      // c-p-q  =  "q" EQUAL qvalue,qvalue = ( "0" [ "." 0*3DIGIT ] )/ ( "1" [ "." 0*3("0") ] )
+	expires int         // c-p-expires =  "expires" EQUAL delta-seconds,delta-seconds = 1*DIGIT
+	generic sync.Map    // generic-param,contact-extension = generic-param,generic-param =  token [ EQUAL gen-value ]
+	isOrder bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
+	order   chan string // It is convenient to record the order of the original parameter fields when parsing
+	source  string      // source string
 }
 
 func (m *Contact) SetField(field string) {
 	if regexp.MustCompile(`^(?i)(contact|m)$`).MatchString(field) {
 		m.field = strings.Title(field)
+	} else {
+		m.field = "Contact"
 	}
 }
 func (m *Contact) GetField() string {
@@ -137,10 +146,10 @@ func (m *Contact) SetHost(host string) {
 func (m *Contact) GetHost() string {
 	return m.host
 }
-func (m *Contact) SetPort(port string) {
+func (m *Contact) SetPort(port uint16) {
 	m.port = port
 }
-func (m *Contact) GetPort() string {
+func (m *Contact) GetPort() uint16 {
 	return m.port
 }
 func (m *Contact) SetQ(qValue string) {
@@ -149,27 +158,25 @@ func (m *Contact) SetQ(qValue string) {
 func (m *Contact) GetQ() string {
 	return m.q
 }
-func (m *Contact) SetExpires(expires string) {
+func (m *Contact) SetExpires(expires int) {
 	m.expires = expires
 }
-func (m *Contact) GetExpires() string {
+func (m *Contact) GetExpires() int {
 	return m.expires
 }
-func (m *Contact) SetGeneric(generic string) {
+func (m *Contact) SetGeneric(generic sync.Map) {
 	m.generic = generic
 }
-func (m *Contact) GetGeneric() string {
+func (m *Contact) GetGeneric() sync.Map {
 	return m.generic
-}
-func (m *Contact) SetSource(source string) {
-	m.source = source
 }
 func (m *Contact) GetSource() string {
 	return m.source
 }
 
-func NewContact(name, spec, schema, user, host, port, q, expires, generic string) *Contact {
+func NewContact(name, spec, schema, user, host string, port uint16, q string, expires int, generic sync.Map) *Contact {
 	return &Contact{
+		field:   "Contact",
 		name:    name,
 		spec:    spec,
 		schema:  schema,
@@ -179,15 +186,24 @@ func NewContact(name, spec, schema, user, host, port, q, expires, generic string
 		q:       q,
 		expires: expires,
 		generic: generic,
+		isOrder: false,
+		order:   make(chan string, 1024),
 	}
 }
 func (m *Contact) Raw() string {
 	result := ""
-	if len(strings.TrimSpace(m.field)) > 0 {
-		result += fmt.Sprintf("%s:", m.field)
-	} else {
-		result += fmt.Sprintf("%s:", strings.Title("Contact"))
+	if m.isOrder {
+		for data := range m.order {
+			result += data
+		}
+		m.isOrder = false
+		result += "\r\n"
+		return result
 	}
+	if len(strings.TrimSpace(m.field)) == 0 {
+		m.field = "Contact"
+	}
+	result += fmt.Sprintf("%s:", strings.Title(m.field))
 	if len(strings.TrimSpace(m.name)) > 0 {
 		if strings.Contains(m.name, "\"") {
 			result += fmt.Sprintf(" %s", m.name)
@@ -205,8 +221,8 @@ func (m *Contact) Raw() string {
 	if len(strings.TrimSpace(m.host)) > 0 {
 		uri += fmt.Sprintf("@%s", m.host)
 	}
-	if len(strings.TrimSpace(m.port)) > 0 {
-		uri += fmt.Sprintf(":%s", m.port)
+	if m.port > 0 {
+		uri += fmt.Sprintf(":%v", m.port)
 	}
 	if len(uri) > 0 {
 		switch strings.TrimSpace(m.spec) {
@@ -224,12 +240,22 @@ func (m *Contact) Raw() string {
 	if len(strings.TrimSpace(m.q)) > 0 {
 		result += fmt.Sprintf(";q=%s", m.q)
 	}
-	if len(strings.TrimSpace(m.expires)) > 0 {
-		result += fmt.Sprintf(";expires=%s", m.expires)
+	if m.expires >= 0 {
+		result += fmt.Sprintf(";expires=%v", m.expires)
 	}
-	if len(strings.TrimSpace(m.generic)) > 0 {
-		result += fmt.Sprintf(";%s", m.generic)
-	}
+	m.generic.Range(func(key, value interface{}) bool {
+		if reflect.ValueOf(value).IsValid() {
+			if reflect.ValueOf(value).IsZero() {
+				result += fmt.Sprintf(";%v", key)
+				return true
+			}
+			result += fmt.Sprintf(";%v=\"%v\"", key, value)
+			return true
+		}
+		result += fmt.Sprintf(";%v", key)
+		return true
+	})
+	result = strings.TrimSuffix(result, ";")
 	result += "\r\n"
 	return result
 }
@@ -241,13 +267,15 @@ func (m *Contact) Parse(raw string) {
 	if len(strings.TrimSpace(raw)) == 0 {
 		return
 	}
-	// contact field regexp
+	// field regexp
 	fieldRegexp := regexp.MustCompile(`^(?i)(contact|m)( )*:`)
 	if !fieldRegexp.MatchString(raw) {
 		return
 	}
-	m.field = regexp.MustCompile(`:`).ReplaceAllString(fieldRegexp.FindString(raw), "")
 	m.source = raw
+	// contact order
+	m.contactOrder(raw)
+	m.field = regexp.MustCompile(`:`).ReplaceAllString(fieldRegexp.FindString(raw), "")
 	raw = fieldRegexp.ReplaceAllString(raw, "")
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
 
@@ -295,7 +323,6 @@ func (m *Contact) Parse(raw string) {
 		schema = stringTrimPrefixAndTrimSuffix(schema, " ")
 		m.schema = schema
 	}
-
 	// user regexp
 	userRegexp := regexp.MustCompile(schemasRegexpStr + `.*@`)
 	if userRegexp.MatchString(raw) {
@@ -307,7 +334,6 @@ func (m *Contact) Parse(raw string) {
 			m.user = user
 			raw = regexp.MustCompile(`.*`+user).ReplaceAllString(raw, "")
 		}
-
 	}
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
 	// host regexp
@@ -327,44 +353,56 @@ func (m *Contact) Parse(raw string) {
 	// port regexp
 	portRegexp := regexp.MustCompile(`.*?:\d+`)
 	if portRegexp.MatchString(raw) {
-		port := portRegexp.FindString(raw)
-		port = regexp.MustCompile(`.*:`).ReplaceAllString(port, "")
-		port = stringTrimPrefixAndTrimSuffix(port, " ")
-		if len(port) > 0 {
-			m.port = port
-			raw = regexp.MustCompile(`.*`+port).ReplaceAllString(raw, "")
-		}
-	}
-	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
-	// q regexp
-	qRegexp := regexp.MustCompile(`(?i)(q)( )?=.*`)
-	if qRegexp.MatchString(raw) {
-		q := qRegexp.FindString(raw)
-		q = regexp.MustCompile(`(?i)q( )?=`).ReplaceAllString(q, "")
-		q = regexp.MustCompile(`;.*`).ReplaceAllString(q, "")
-		q = stringTrimPrefixAndTrimSuffix(q, " ")
-		if len(q) > 0 {
-			m.q = q
-			raw = regexp.MustCompile(`.*`+q).ReplaceAllString(raw, "")
-		}
-	}
-	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
-	// expires regexp
-	expiresRegexp := regexp.MustCompile(`(?i)(expires)( )?=\d+`)
-	if expiresRegexp.MatchString(raw) {
-		expires := expiresRegexp.FindString(raw)
-		expires = regexp.MustCompile(`(?i)expires( )?=`).ReplaceAllString(expires, "")
-		expires = stringTrimPrefixAndTrimSuffix(expires, " ")
-		if len(expires) > 0 {
-			m.expires = expires
-			raw = regexp.MustCompile(`.*`+expires).ReplaceAllString(raw, "")
+		ports := portRegexp.FindString(raw)
+		ports = regexp.MustCompile(`.*:`).ReplaceAllString(ports, "")
+		ports = stringTrimPrefixAndTrimSuffix(ports, " ")
+		if len(ports) > 0 {
+			port, _ := strconv.Atoi(ports)
+			m.port = uint16(port)
+			raw = regexp.MustCompile(`.*`+ports).ReplaceAllString(raw, "")
 		}
 	}
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
 	raw = stringTrimPrefixAndTrimSuffix(raw, ";")
 	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
-	// generic regexp
-	if len(raw) > 0 {
-		m.generic = raw
+	// q regexp
+	qRegexp := regexp.MustCompile(`((?i)(?:^q))( )*=`)
+	// expires regexp
+	expiresRegexp := regexp.MustCompile(`((?i)(?:^expires))( )*=`)
+	rawSlice := strings.Split(raw, ";")
+	for _, raws := range rawSlice {
+		raws = stringTrimPrefixAndTrimSuffix(raws, " ")
+		switch {
+		case qRegexp.MatchString(raws):
+			q := qRegexp.ReplaceAllString(raws, "")
+			q = regexp.MustCompile(`"`).ReplaceAllString(q, "")
+			if len(q) > 0 {
+				m.q = q
+			}
+		case expiresRegexp.MatchString(raws):
+			expires := expiresRegexp.ReplaceAllString(raws, "")
+			expires = regexp.MustCompile(`"`).ReplaceAllString(expires, "")
+			if len(expires) > 0 {
+				expire, _ := strconv.Atoi(expires)
+				m.expires = expire
+			}
+		default:
+			// generic regexp
+			kvs := strings.Split(raws, "=")
+			if len(kvs) == 1 {
+				m.generic.Store(kvs[0], "")
+			} else {
+				m.generic.Store(kvs[0], kvs[1])
+			}
+		}
 	}
+
+}
+func (m *Contact) contactOrder(raw string) {
+	if m.order == nil {
+		m.order = make(chan string, 1024)
+	}
+	m.isOrder = true
+	defer close(m.order)
+	m.order <- raw
 }
