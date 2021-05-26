@@ -169,12 +169,12 @@ func NewSipMsg(requestLine *RequestLine, statusLine *StatusLine, authorization *
 		isOrder:         false,
 	}
 }
-func CreateUacSipMsg() *SipMsg {
+func CreateUacSipMsg(headerFields []string, parameters map[string]string) *SipMsg {
 	sm := new(SipMsg)
 
 	return sm
 }
-func CreateUasSipMsg() *SipMsg {
+func CreateUasSipMsg(headerFields []string, parameters map[string]string) *SipMsg {
 	sm := new(SipMsg)
 
 	return sm
