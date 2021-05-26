@@ -5,7 +5,90 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"time"
 )
+
+// https://www.rfc-editor.org/rfc/rfc3261.html#section-22.4
+//
+
+// 22.4 The Digest Authentication Scheme
+
+// This section describes the modifications and clarifications required
+// to apply the HTTP Digest authentication scheme to SIP.  The SIP
+// scheme usage is almost completely identical to that for HTTP [17].
+
+// Since RFC 2543 is based on HTTP Digest as defined in RFC 2069 [39],
+// SIP servers supporting RFC 2617 MUST ensure they are backwards
+// compatible with RFC 2069.  Procedures for this backwards
+// compatibility are specified in RFC 2617.  Note, however, that SIP
+// servers MUST NOT accept or request Basic authentication.
+
+// The rules for Digest authentication follow those defined in [17],
+// with "HTTP/1.1" replaced by "SIP/2.0" in addition to the following
+// differences:
+
+// 	1.  The URI included in the challenge has the following BNF:
+
+// 		URI  =  SIP-URI / SIPS-URI
+
+// 	2.  The BNF in RFC 2617 has an error in that the 'uri' parameter
+// 		of the Authorization header field for HTTP Digest
+// 		authentication is not enclosed in quotation marks.  (The
+// 			example in Section 3.5 of RFC 2617 is correct.)  For SIP, the
+// 			'uri' MUST be enclosed in quotation marks.
+
+// 	3.  The BNF for digest-uri-value is:
+
+// 		digest-uri-value  =  Request-URI ; as defined in Section 25
+
+// 	4.  The example procedure for choosing a nonce based on Etag does
+// 		not work for SIP.
+
+// 	5.  The text in RFC 2617 [17] regarding cache operation does not
+// 		apply to SIP.
+
+// 	6.  RFC 2617 [17] requires that a server check that the URI in the
+// 		request line and the URI included in the Authorization header
+// 		field point to the same resource.  In a SIP context, these two
+// 		URIs may refer to different users, due to forwarding at some
+// 		proxy.  Therefore, in SIP, a server MAY check that the
+// 		Request-URI in the Authorization header field value
+// 		corresponds to a user for whom the server is willing to accept
+// 		forwarded or direct requests, but it is not necessarily a
+// 		failure if the two fields are not equivalent.
+
+// 	7.  As a clarification to the calculation of the A2 value for
+// 		message integrity assurance in the Digest authentication
+// 		scheme, implementers should assume, when the entity-body is
+// 		empty (that is, when SIP messages have no body) that the hash
+// 		of the entity-body resolves to the MD5 hash of an empty
+// 		string, or:
+
+// 			H(entity-body) = MD5("") =
+// 		"d41d8cd98f00b204e9800998ecf8427e"
+
+// 	8.  RFC 2617 notes that a cnonce value MUST NOT be sent in an
+// 		Authorization (and by extension Proxy-Authorization) header
+// 		field if no qop directive has been sent.  Therefore, any
+// 		algorithms that have a dependency on the cnonce (including
+// 		"MD5-Sess") require that the qop directive be sent.  Use of
+// 		the "qop" parameter is optional in RFC 2617 for the purposes
+// 		of backwards compatibility with RFC 2069; since RFC 2543 was
+// 		based on RFC 2069, the "qop" parameter must unfortunately
+// 		remain optional for clients and servers to receive.  However,
+// 		servers MUST always send a "qop" parameter in WWW-Authenticate
+// 		and Proxy-Authenticate header field values.  If a client
+// 		receives a "qop" parameter in a challenge header field, it
+// 		MUST send the "qop" parameter in any resulting authorization
+// 		header field.
+// RFC 2543 did not allow usage of the Authentication-Info header field
+// (it effectively used RFC 2069).  However, we now allow usage of this
+// header field, since it provides integrity checks over the bodies and
+// provides mutual authentication.  RFC 2617 [17] defines mechanisms for
+// backwards compatibility using the qop attribute in the request.
+// These mechanisms MUST be used by a server to determine if the client
+// supports the new mechanisms in RFC 2617 that were not specified in
+// RFC 2069.
 
 type Digest struct {
 	Realm    string
@@ -41,7 +124,6 @@ func GenDigestResponse(p *DigestParams) string {
 		bytes = md5.Sum(b)
 	}
 	ha1 := fmt.Sprintf("%x", bytes)
-	log.Printf("HA1: %s\r\n", ha1)
 
 	if p.Qop == "auth-int" {
 		bytes = md5.Sum([]byte(fmt.Sprintf("%s:%s%s", p.Method, p.URI, p.EntityBody)))
@@ -56,7 +138,6 @@ func GenDigestResponse(p *DigestParams) string {
 		bytes = md5.Sum([]byte(fmt.Sprintf("%s:%s:%08x:%s:%s:%s", ha1, p.Nonce, p.Nc, p.Cnonce, p.Qop, ha2)))
 	}
 	p.Response = fmt.Sprintf("%x", bytes)
-	log.Printf("response : %s\r\n", p.Response)
 	return p.Response
 }
 
@@ -87,6 +168,13 @@ func getDigestResponse(username, realm, password, nonce, uri string) string {
 	response := GenDigestResponse(dp)
 	return response
 }
+
+// H(client-IP ":" time-stamp ":" private-key )
+func GetNonce(clientIP string, privateKey string) string {
+	bytes := md5.Sum([]byte(fmt.Sprintf("%v:%v:%v", clientIP, time.Now().UnixNano(), privateKey)))
+	return fmt.Sprintf("%x", bytes)
+}
+
 func GetDigestNonce(username, realm, password, uri, callid string) string {
 	dp := &DigestParams{
 		Digest: Digest{

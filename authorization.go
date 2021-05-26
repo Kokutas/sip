@@ -151,7 +151,143 @@ import (
 // supports the new mechanisms in RFC 2617 that were not specified in
 // RFC 2069.
 
+// https://www.rfc-editor.org/rfc/rfc2069.html#section-2.1.2
 //
+// 2.1.2 The Authorization Request Header
+
+//    The client is expected to retry the request, passing an Authorization
+//    header line, which is defined as follows.
+
+// Authorization       = "Authorization" ":" "Digest" digest-response
+
+// digest-response     = 1#( username | realm | nonce | digest-uri |
+//                          response | [ digest ] | [ algorithm ] |
+//                          opaque )
+
+// username            = "username" "=" username-value
+// username-value      = quoted-string
+// digest-uri          = "uri" "=" digest-uri-value
+// digest-uri-value    = request-uri         ; As specified by HTTP/1.1
+// response            = "response" "=" response-digest
+// digest             = "digest" "=" entity-digest
+
+// response-digest     = <"> *LHEX <">
+// entity-digest      = <"> *LHEX <">
+// LHEX                = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" |
+//                       "8" | "9" | "a" | "b" | "c" | "d" | "e" | "f"
+
+//    The definitions of response-digest and entity-digest above indicate
+//    the encoding for their values. The following definitions show how the
+//    value is computed:
+
+//    response-digest     =
+//    <"> < KD ( H(A1), unquoted nonce-value ":" H(A2) > <">
+
+//	  	A1             = unquoted username-value ":" unquoted realm-value
+// 										 ":" password
+// 		password       = < user's password >
+// 		A2             = Method ":" digest-uri-value
+
+// The "username-value" field is a "quoted-string" as specified in
+// section 2.2 of the HTTP/1.1 specification [2].  However, the
+// surrounding quotation marks are removed in forming the string A1.
+// Thus if the Authorization header includes the fields
+
+// username="Mufasa", realm="myhost@testrealm.com"
+
+// and the user Mufasa has password "CircleOfLife" then H(A1) would be
+// H(Mufasa:myhost@testrealm.com:CircleOfLife) with no quotation marks
+// in the digested string.
+
+// No white space is allowed in any of the strings to which the digest
+// function H() is applied unless that white space exists in the quoted
+// strings or entity body whose contents make up the string to be
+// digested.  For example, the string A1 in the illustrated above must
+// be Mufasa:myhost@testrealm.com:CircleOfLife with no white space on
+// either side of the colons.  Likewise, the other strings digested by
+// H() must not have white space on either side of the colons which
+// delimit their fields unless that white space was in the quoted
+// strings or entity body being digested.
+
+// "Method" is the HTTP request method as specified in section 5.1 of
+// [2].  The "request-uri" value is the Request-URI from the request
+// line as specified in section 5.1 of [2].  This may be "*", an
+// "absoluteURL" or an "abs_path" as specified in section 5.1.2 of [2],
+// but it MUST agree with the Request-URI. In particular, it MUST be an
+// "absoluteURL" if the Request-URI is an "absoluteURL".
+
+// The authenticating server must assure that the document designated by
+// the "uri" parameter is the same as the document served.  The purpose
+// of duplicating information from the request URL in this field is to
+// deal with the possibility that an intermediate proxy may alter the
+// client's request.  This altered (but presumably semantically
+// equivalent) request would not result in the same digest as that
+// calculated by the client.
+
+// The optional "digest" field contains a digest of the entity body and
+// some of the associated entity headers.  This digest can be useful in
+// both request and response transactions.  In a request it can insure
+// the integrity of POST data or data being PUT to the server.  In a
+// response it insures the integrity of the served document.  The value
+// of the "digest" field is an <entity-digest> which is defined as
+// follows.
+
+// entity-digest = <"> KD (H(A1), unquoted nonce-value ":" Method ":"
+// 						date ":" entity-info ":" H(entity-body)) <">
+// 	; format is <"> *LHEX <">
+
+// date = = rfc1123-date            ; see section 3.3.1 of [2]
+// entity-info = H(
+// 	   digest-uri-value ":"
+// 	   media-type ":"         ; Content-type, see section 3.7 of [2]
+// 	   *DIGIT ":"             ; Content length, see 10.12 of [2]
+// 	   content-coding ":"     ; Content-encoding, see 3.5 of [2]
+// 	   last-modified ":"      ; last modified date, see 10.25 of [2]
+// 	   expires                ; expiration date; see 10.19 of [2]
+// 	   )
+
+// last-modified   = rfc1123-date  ; see section 3.3.1 of [2]
+// expires         = rfc1123-date
+
+// The entity-info elements incorporate the values of the URI used to
+// request the entity as well as the associated entity headers Content-
+// type, Content-length, Content-encoding, Last-modified, and Expires.
+// These headers are all end-to-end headers (see section 13.5.1 of [2])
+// which must not be modified by proxy caches.  The "entity-body" is as
+// specified by section 10.13 of [2] or RFC 1864.
+
+// Note that not all entities will have an associated URI or all of
+// these headers.  For example, an entity which is the data of a POST
+// request will typically not have a digest-uri-value or Last-modified
+// or Expires headers.  If an entity does not have a digest-uri-value or
+// a header corresponding to one of the entity-info fields, then that
+// field is left empty in the computation of entity-info.  All the
+// colons specified above are present, however.  For example the value
+// of the entity-info associated with POST data which has content-type
+// "text/plain", no content-encoding and a length of 255 bytes would be
+// H(:text/plain:255:::).  Similarly a request may not have a "Date"
+// header.  In this case the date field of the entity-digest should be
+// empty.
+
+// In the entity-info and entity-digest computations, except for the
+// blank after the comma in "rfc1123-date", there must be no white space
+// between "words" and "tspecials", and exactly one blank between
+// "words" (see section 2.2 of [2]).
+// Implementors should be aware of how authenticated transactions
+// interact with proxy caches.  The HTTP/1.1 protocol specifies that
+// when a shared cache (see section 13.10 of [2]) has received a request
+// containing an Authorization header and a response from relaying that
+// request, it MUST NOT return that response as a reply to any other
+// request, unless one of two Cache-control (see section 14.9 of [2])
+// directives was present in the response.  If the original response
+// included the "must-revalidate" Cache-control directive, the cache MAY
+// use the entity of that response in replying to a subsequent request,
+// but MUST first revalidate it with the origin server, using the
+// request headers from the new request to allow the origin server to
+// authenticate the new request.  Alternatively, if the original
+// response included the "public" Cache-control directive, the response
+// entity MAY be returned in reply to any subsequent request.
+
 type Authorization struct {
 	field      string      // "Authorization"
 	authSchema string      // auth-schema: Basic / Digest

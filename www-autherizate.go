@@ -55,6 +55,119 @@ import (
 //                        *("," qop-value) RDQUOT
 // qop-value           =  "auth" / "auth-int" / token
 //
+// https://www.rfc-editor.org/rfc/rfc2069.html#section-2.1.1
+//
+// 2.1.1 The WWW-Authenticate Response Header
+
+// If a server receives a request for an access-protected object, and an
+// acceptable Authorization header is not sent, the server responds with
+// a "401 Unauthorized" status code, and a WWW-Authenticate header,
+// which is defined as follows:
+
+// 	WWW-Authenticate    = "WWW-Authenticate" ":" "Digest"
+// 							digest-challenge
+
+// 	digest-challenge    = 1#( realm | [ domain ] | nonce |
+// 						[ digest-opaque ] |[ stale ] | [ algorithm ] )
+
+// 	realm               = "realm" "=" realm-value
+// 	realm-value         = quoted-string
+// 	domain              = "domain" "=" <"> 1#URI <">
+// 	nonce               = "nonce" "=" nonce-value
+// 	nonce-value         = quoted-string
+// 	opaque              = "opaque" "=" quoted-string
+// 	stale               = "stale" "=" ( "true" | "false" )
+// 	algorithm           = "algorithm" "=" ( "MD5" | token )
+
+// The meanings of the values of the parameters used above are as
+// follows:
+
+// 	realm
+// 	A string to be displayed to users so they know which username and
+// 	password to use.  This string should contain at least the name of
+// 	the host performing the authentication and might additionally
+// 	indicate the collection of users who might have access.  An example
+// 	might be "registered_users@gotham.news.com".  The realm is a
+// 	"quoted-string" as specified in section 2.2 of the HTTP/1.1
+// 	specification [2].
+
+// 	domain
+// 	A comma-separated list of URIs, as specified for HTTP/1.0.  The
+// 	intent is that the client could use this information to know the
+// 	set of URIs for which the same authentication information should be
+// 	sent.  The URIs in this list may exist on different servers.  If
+// 	this keyword is omitted or empty, the client should assume that the
+// 	domain consists of all URIs on the responding server.
+
+// 	nonce
+// 	A server-specified data string which may be uniquely generated each
+// 	time a 401 response is made.  It is recommended that this string be
+// 	base64 or hexadecimal data.  Specifically, since the string is
+// 	passed in the header lines as a quoted string, the double-quote
+// 	character is not allowed.
+
+// 	The contents of the nonce are implementation dependent.  The
+// 	quality of the implementation depends on a good choice.  A
+// 	recommended nonce would include
+
+// 			H(client-IP ":" time-stamp ":" private-key )
+
+// 	Where client-IP is the dotted quad IP address of the client making
+// 	the request, time-stamp is a server-generated time value,  private-
+// 	key is data known only to the server.  With a nonce of this form a
+// 	server would normally recalculate the nonce after receiving the
+// 	client authentication header and reject the request if it did not
+// 	match the nonce from that header. In this way the server can limit
+// 	the reuse of a nonce to the IP address to which it was issued and
+// 	limit the time of the nonce's validity.  Further discussion of the
+// 	rationale for nonce construction is in section 3.2 below.
+
+// 	An implementation might choose not to accept a previously used
+// 	nonce or a previously used digest to protect against a replay
+// 	attack.  Or, an implementation might choose to use one-time nonces
+// 	or digests for POST or PUT requests and a time-stamp for GET
+// 	requests.  For more details on the issues involved see section 3.
+// 	of this document.
+
+// 	The nonce is opaque to the client.
+
+// 	opaque
+// 	A string of data, specified by the server, which should be
+// 	returned by the client unchanged.  It is recommended that this
+// 	string be base64 or hexadecimal data.  This field is a
+// 	"quoted-string" as specified in section 2.2 of the HTTP/1.1
+// 	specification [2].
+
+// 	stale
+// 	A flag, indicating that the previous request from the client was
+// 	rejected because the nonce value was stale.  If stale is TRUE (in
+// 	upper or lower case), the client may wish to simply retry the
+// 	request with a new encrypted response, without reprompting the
+// 	user for a new username and password.  The server should only set
+// 	stale to true if it receives a request for which the nonce is
+// 	invalid but with a valid digest for that nonce (indicating that
+// 	the client knows the correct username/password).
+
+// 	 algorithm
+//      A string indicating a pair of algorithms used to produce the
+//      digest and a checksum.  If this not present it is assumed to be
+//      "MD5". In this document the string obtained by applying the
+//      digest algorithm to the data "data" with secret "secret" will be
+//      denoted by KD(secret, data), and the string obtained by applying
+//      the checksum algorithm to the data "data" will be denoted
+//      H(data).
+
+//      For the "MD5" algorithm
+
+//         H(data) = MD5(data)
+
+//      and
+
+//         KD(secret, data) = H(concat(secret, ":", data))
+
+//      i.e., the digest is the MD5 of the secret concatenated with a colon
+//      concatenated with the data.
+
 type WWWAuthenticate struct {
 	field      string      // "WWW-Authenticate"
 	authSchema string      // auth-schema: Basic / Digest
@@ -242,7 +355,7 @@ func (wa *WWWAuthenticate) Raw() (result strings.Builder) {
 			if regexp.MustCompile(`((?i)(qop))( )*=`).MatchString(orders) {
 				// qop-options =  "qop" EQUAL LDQUOT qop-value,*("," qop-value) RDQUOT,qop-value =  "auth" / "auth-int" / token
 				if len(strings.TrimSpace(wa.qop)) > 0 {
-					result.WriteString(fmt.Sprintf(" qop=%s,", wa.qop))
+					result.WriteString(fmt.Sprintf(" qop=\"%s\",", wa.qop))
 				}
 				continue
 			}
@@ -302,7 +415,7 @@ func (wa *WWWAuthenticate) Raw() (result strings.Builder) {
 		}
 		// qop-options =  "qop" EQUAL LDQUOT qop-value,*("," qop-value) RDQUOT,qop-value =  "auth" / "auth-int" / token
 		if len(strings.TrimSpace(wa.qop)) > 0 {
-			result.WriteString(fmt.Sprintf(" qop=%s,", wa.qop))
+			result.WriteString(fmt.Sprintf(" qop=\"%s\",", wa.qop))
 		}
 	}
 	// auth-param = auth-param-name EQUAL ( token / quoted-string ),auth-param-name = token
@@ -326,6 +439,102 @@ func (wa *WWWAuthenticate) Raw() (result strings.Builder) {
 	return
 }
 func (wa *WWWAuthenticate) Parse(raw string) {
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	if len(strings.TrimSpace(raw)) == 0 {
+		return
+	}
+	// field regexp
+	fieldRegexp := regexp.MustCompile(`((?i)(?:^www-authenticate))( )*:`)
+	if !fieldRegexp.MatchString(raw) {
+		return
+	}
+	wa.source = raw
+	wa.authParam = sync.Map{}
+	wa.algorithm = "MD5"
+	field := fieldRegexp.FindString(raw)
+	field = regexp.MustCompile(`:`).ReplaceAllString(field, "")
+	field = stringTrimPrefixAndTrimSuffix(field, " ")
+	wa.field = field
+	raw = fieldRegexp.ReplaceAllString(raw, "")
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	// auth-schema regexp
+	authschemaRegexp := regexp.MustCompile(`(?i)(basic|digest)`)
+	if authschemaRegexp.MatchString(raw) {
+		authschema := authschemaRegexp.FindString(raw)
+		wa.authSchema = authschema
+		raw = authschemaRegexp.ReplaceAllString(raw, "")
+	}
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	raw = stringTrimPrefixAndTrimSuffix(raw, ",")
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	if len(strings.TrimSpace(raw)) == 0 {
+		return
+	}
+
+	// www-authenticate order
+	wa.wwwAuthenticateOrder(raw)
+
+	// realm regexp : realm = "realm" EQUAL realm-value,realm-value = quoted-string
+	realmRegexp := regexp.MustCompile(`((?i)(?:^realm))( )*=`)
+	// domain regexp ：domain =  "domain" EQUAL LDQUOT URI,*( 1*SP URI ) RDQUOT, URI =  absoluteURI / abs-path
+	domainRegexp := regexp.MustCompile(`((?i)(?:^domain))( )*=`)
+	// nonce regexp : nonce = "nonce" EQUAL nonce-value,nonce-value = quoted-string
+	nonceRegexp := regexp.MustCompile(`((?i)(?:^nonce))( )*=`)
+	// opaque     regexp opaque =  "opaque" EQUAL quoted-string
+	opaqueRegexp := regexp.MustCompile(`((?i)(?:^opaque))( )*=`)
+	// stale =  "stale" EQUAL ( "true" / "false" )
+	staleRegexp := regexp.MustCompile(`((?i)(?:^stale))( )*=`)
+	// algorithm regexp algorithm = "algorithm" EQUAL ( "MD5" / "MD5-sess"/ token )
+	algorithmRegexp := regexp.MustCompile(`((?i)(?:^algorithm))( )*=`)
+	// qop        regexp message-qop = "qop" EQUAL qop-value,qop-value = "auth" / "auth-int" / token
+	qopRegexp := regexp.MustCompile(`((?i)(?:^qop))( )*=`)
+
+	rawSlice := strings.Split(raw, ",")
+	for _, raws := range rawSlice {
+		raws = stringTrimPrefixAndTrimSuffix(raws, " ")
+		switch {
+		case realmRegexp.MatchString(raws):
+			realm := realmRegexp.ReplaceAllString(raws, "")
+			realm = regexp.MustCompile(`"`).ReplaceAllString(realm, "")
+			wa.realm = realm
+		case domainRegexp.MatchString(raws):
+			domain := domainRegexp.ReplaceAllString(raw, "")
+			domain = regexp.MustCompile(`"`).ReplaceAllString(domain, "")
+			wa.domain = domain
+		case nonceRegexp.MatchString(raws):
+			nonce := nonceRegexp.ReplaceAllString(raws, "")
+			nonce = regexp.MustCompile(`"`).ReplaceAllString(nonce, "")
+			wa.nonce = nonce
+		case opaqueRegexp.MatchString(raws):
+			opaque := opaqueRegexp.ReplaceAllString(raws, "")
+			opaque = regexp.MustCompile(`"`).ReplaceAllString(opaque, "")
+			wa.opaque = opaque
+		case staleRegexp.MatchString(raws):
+			stale := opaqueRegexp.ReplaceAllString(raws, "")
+			stale = regexp.MustCompile(`"`).ReplaceAllString(stale, "")
+			if regexp.MustCompile(`(?i)(true)`).MatchString(stale) {
+				wa.stale = true
+			}
+		case algorithmRegexp.MatchString(raws):
+			algorithm := algorithmRegexp.ReplaceAllString(raws, "")
+			algorithm = regexp.MustCompile(`"`).ReplaceAllString(algorithm, "")
+			wa.algorithm = algorithm
+		case qopRegexp.MatchString(raws):
+			qop := qopRegexp.ReplaceAllString(raws, "")
+			qop = regexp.MustCompile(`"`).ReplaceAllString(qop, "")
+			wa.qop = qop
+		default:
+			// authParam  sync.Map    // auth-param = auth-param-name EQUAL ( token / quoted-string ),auth-param-name = token
+			kvs := strings.Split(raws, "=")
+			if len(kvs) == 1 {
+				wa.authParam.Store(kvs[0], "")
+			} else {
+				wa.authParam.Store(kvs[0], kvs[1])
+			}
+		}
+	}
 
 }
 func (wa *WWWAuthenticate) wwwAuthenticateOrder(raw string) {
