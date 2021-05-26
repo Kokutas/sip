@@ -1,7 +1,11 @@
 package sip
 
 import (
+	"crypto/md5"
+	"fmt"
+	"math/rand"
 	"strings"
+	"time"
 )
 
 const (
@@ -15,7 +19,7 @@ const (
 //               /   "181"  ;  Call Is Being Forwarded
 //               /   "182"  ;  Queued
 //               /   "183"  ;  Session Progress
-var informational = map[int]string{
+var Informational = map[int]string{
 	100: "Trying",
 	180: "Ringing",
 	181: "Call Is Being Forwarded",
@@ -24,7 +28,7 @@ var informational = map[int]string{
 }
 
 // Success  =  "200"  ;  OK
-var success = map[int]string{
+var Success = map[int]string{
 	200: "OK",
 }
 
@@ -33,7 +37,7 @@ var success = map[int]string{
 //             /   "302"  ;  Moved Temporarily
 //             /   "305"  ;  Use Proxy
 //             /   "380"  ;  Alternative Service
-var redirection = map[int]string{
+var Redirection = map[int]string{
 	300: "Multiple Choices",
 	301: "Moved Permanently",
 	302: "Moved Temporarily",
@@ -69,7 +73,7 @@ var redirection = map[int]string{
 //              /   "488"  ;  Not Acceptable Here
 //              /   "491"  ;  Request Pending
 //              /   "493"  ;  Undecipherable
-var clientError = map[int]string{
+var ClientError = map[int]string{
 	400: "Bad Request",
 	401: "Unauthorized",
 	402: "Payment Required",
@@ -107,7 +111,7 @@ var clientError = map[int]string{
 //              /   "504"  ;  Server Time-out
 //              /   "505"  ;  SIP Version not supported
 //              /   "513"  ;  Message Too Large
-var serverError = map[int]string{
+var ServerError = map[int]string{
 	500: "Internal Server Error",
 	501: "Not Implemented",
 	502: "Bad Gateway",
@@ -121,7 +125,7 @@ var serverError = map[int]string{
 // 			      /   "603"  ;  Decline
 // 			      /   "604"  ;  Does not exist anywhere
 // 			      /   "606"  ;  Not Acceptable
-var globalFailure = map[int]string{
+var GlobalFailure = map[int]string{
 	600: "Busy Everywhere",
 	603: "Decline",
 	604: "Does not exist anywhere",
@@ -147,8 +151,8 @@ var methods = map[string]string{
 }
 
 type SipLayer interface {
-	Raw() string
-	Parse()
+	Raw() strings.Builder
+	Parse(raw string)
 }
 
 func stringTrimPrefixAndTrimSuffix(source string, sub string) string {
@@ -159,15 +163,14 @@ func stringTrimPrefixAndTrimSuffix(source string, sub string) string {
 	return source
 }
 
-// type generic struct {
-// 	index int // order
-// 	kv    map[int]map[string]interface{}
-// 	gk    sync.RWMutex
-// }
-
-// func (g *generic) store(k string, v interface{}) {
-// 	g.gk.Lock()
-// 	defer g.gk.Unlock()
-// 	g.index++
-// 	g.kv[g.index] = map[string]interface{}{k: v}
-// }
+// GenerateBranch branch参数的值必须用magic cookie”z9hG4bK”打头. 其它部分是对“To, From, Call-ID头域和Request-URI”按一定的算法加密后得到。 根据本标准产生的branch ID必须用”z9h64bK”开头。这7个字母是一个乱数cookie（定义成为7位的是为了保证旧版本的RFC2543实现不会产生这样的值），这样服务器收到请求之后，可以很方便的知道这个branch ID是否由本规范所产生的（就是说，全局唯一的）
+func GenBranch(from, to, callId, reqUri string) string {
+	rand.Seed(time.Now().UnixNano())
+	result := fmt.Sprintf("%x",
+		md5.Sum([]byte(fmt.Sprintf("%v%v%v%v%v", from, to, callId, reqUri, rand.Intn(60000)))))
+	return "z9hG4bK-" + result
+}
+func GenUnixNanoBranch() string {
+	rand.Seed(time.Now().UnixNano())
+	return fmt.Sprintf("z9hG4bK%x", md5.Sum([]byte(fmt.Sprintf("%v%v", time.Now().UnixNano(), rand.Intn(60000)))))
+}

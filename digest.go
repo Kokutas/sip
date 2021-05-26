@@ -3,7 +3,6 @@ package sip
 import (
 	"crypto/md5"
 	"fmt"
-	"log"
 	"regexp"
 	"time"
 )
@@ -131,7 +130,6 @@ func GenDigestResponse(p *DigestParams) string {
 		bytes = md5.Sum([]byte(fmt.Sprintf("%s:%s", p.Method, p.URI)))
 	}
 	ha2 := fmt.Sprintf("%x", bytes)
-	log.Printf("HA2: %s\r\n", ha2)
 	if p.Qop == "" {
 		bytes = md5.Sum([]byte(ha1 + ":" + p.Nonce + ":" + ha2))
 	} else {
@@ -170,7 +168,7 @@ func getDigestResponse(username, realm, password, nonce, uri string) string {
 }
 
 // H(client-IP ":" time-stamp ":" private-key )
-func GetNonce(clientIP string, privateKey string) string {
+func GenNonce(clientIP string, privateKey string) string {
 	bytes := md5.Sum([]byte(fmt.Sprintf("%v:%v:%v", clientIP, time.Now().UnixNano(), privateKey)))
 	return fmt.Sprintf("%x", bytes)
 }

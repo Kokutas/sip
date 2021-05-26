@@ -136,7 +136,7 @@ func (sm *SipMsg) GetWarning() *Warning {
 	return sm.Warning
 }
 func (sm *SipMsg) SetWWWAuthenticate(wwwAuthenticate *WWWAuthenticate) {
-	sm.WWWAuthenticate = sm.WWWAuthenticate
+	sm.WWWAuthenticate = wwwAuthenticate
 }
 func (sm *SipMsg) GetWWWAuthenticate() *WWWAuthenticate {
 	return sm.WWWAuthenticate
@@ -211,9 +211,34 @@ func (sm *SipMsg) Raw() (result strings.Builder) {
 		route := sm.Route.Raw()
 		result.WriteString(route.String())
 	}
+	if sm.UserAgent != nil {
+		userAgent := sm.UserAgent.Raw()
+		result.WriteString(userAgent.String())
+	}
+	if sm.CSeq != nil {
+		cseq := sm.CSeq.Raw()
+		result.WriteString(cseq.String())
+	}
 	if sm.Expires != nil {
 		expires := sm.Expires.Raw()
 		result.WriteString(expires.String())
+	}
+	if sm.MaxForwards != nil {
+		if sm.MaxForwards.GetForwards() == 0 {
+			sm.MaxForwards.SetForwards(70)
+		}
+		maxForwards := sm.MaxForwards.Raw()
+		result.WriteString(maxForwards.String())
+	}
+	contentLength := sm.ContentLength.Raw()
+	result.WriteString(contentLength.String())
+
+	if sm.WWWAuthenticate != nil {
+		wwwAuthenticate := sm.WWWAuthenticate.Raw()
+		result.WriteString(wwwAuthenticate.String())
+	} else if sm.Authorization != nil {
+		authorization := sm.Authorization.Raw()
+		result.WriteString(authorization.String())
 	}
 
 	result.WriteString("\r\n")
