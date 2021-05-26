@@ -1,5 +1,12 @@
 package sip
 
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
 // https://www.rfc-editor.org/rfc/rfc3261.html#section-20.43
 //
 // 20.43 Warning
@@ -91,55 +98,113 @@ package sip
 
 // Warning : for use in debugging
 type Warning struct {
-	field     string      // "Warning"
-	warnCode  uint        //  warn-code = 3DIGIT
-	warnAgent string      // warn-agent =  hostport / pseudonym;the name or pseudonym of the server adding;the Warning header, for use in debugging;pseudonym = token
-	warnText  string      // warn-text  =  quoted-string
-	isOrder   bool        // Determine whether the analysis is the result of the analysis and whether it is sorted during the analysis
-	order     chan string // It is convenient to record the order of the original parameter fields when parsing
-	source    string      // waring source string
+	field     string // "Warning"
+	warnCode  uint   //  warn-code = 3DIGIT
+	warnAgent string // warn-agent =  hostport / pseudonym;the name or pseudonym of the server adding;the Warning header, for use in debugging;pseudonym = token
+	warnText  string // warn-text  =  quoted-string
+	source    string // source string
 }
 
-func (warning *Warning) SetField(field string) {
-	warning.field = field
-}
-func (warning *Warning) GetField() string {
-	return warning.field
-}
-func (warning *Warning) SetWarnCode(warnCode uint) {
-	warning.warnCode = warnCode
-}
-func (warning *Warning) GetWarnCode() uint {
-	return warning.warnCode
-}
-func (warning *Warning) SetWarnAgent(warnAgent string) {
-	warning.warnAgent = warnAgent
-}
-func (warning *Warning) GetWarnAgent() string {
-	return warning.warnAgent
-}
-func (warning *Warning) SetWarnText(warnText string) {
-	warning.warnText = warnText
-}
-func (warning *Warning) GetWarnText() string {
-	return warning.warnText
-}
-func (warning *Warning) GetIsOrder() bool {
-	return warning.isOrder
-}
-func (warning *Warning) GetOrder() []string {
-	result := make([]string, 0)
-	if warning.order == nil {
-		return result
+func (w *Warning) SetField(field string) {
+	if regexp.MustCompile(`^(?i)(warning)$`).MatchString(field) {
+		w.field = field
+	} else {
+		w.field = "Warning"
 	}
-	for data := range warning.order {
-		result = append(result, data)
+}
+func (w *Warning) GetField() string {
+	return w.field
+}
+func (w *Warning) SetWarnCode(warnCode uint) {
+	w.warnCode = warnCode
+}
+func (w *Warning) GetWarnCode() uint {
+	return w.warnCode
+}
+func (w *Warning) SetWarnAgent(warnAgent string) {
+	w.warnAgent = warnAgent
+}
+func (w *Warning) GetWarnAgent() string {
+	return w.warnAgent
+}
+func (w *Warning) SetWarnText(warnText string) {
+	w.warnText = warnText
+}
+func (w *Warning) GetWarnText() string {
+	return w.warnText
+}
+func (w *Warning) GetSource() string {
+	return w.source
+}
+func NewWarning(warnCode uint, warnAgent string, warnText string) *Warning {
+	return &Warning{
+		field:     "Warning",
+		warnCode:  warnCode,
+		warnAgent: warnAgent,
+		warnText:  warnText,
 	}
-	return result
 }
-func (warning *Warning) SetSource(source string) {
-	warning.source = source
+func (w *Warning) Raw() (result strings.Builder) {
+	if len(strings.TrimSpace(w.field)) == 0 {
+		w.field = "Warning"
+	}
+	result.WriteString(fmt.Sprintf("%s:", w.field))
+	if w.warnCode > 0 {
+		result.WriteString(fmt.Sprintf(" %03d", w.warnCode))
+	}
+	if len(strings.TrimSpace(w.warnAgent)) > 0 {
+		result.WriteString(fmt.Sprintf(" %s", w.warnAgent))
+	}
+	if len(strings.TrimSpace(w.warnText)) > 0 {
+		result.WriteString(fmt.Sprintf(" \"%s\"", w.warnText))
+	}
+	result.WriteString("\r\n")
+	return
 }
-func (warning *Warning) GetSource() string {
-	return warning.source
+func (w *Warning) Parse(raw string) {
+	raw = regexp.MustCompile(`\r`).ReplaceAllString(raw, "")
+	raw = regexp.MustCompile(`\n`).ReplaceAllString(raw, "")
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	if len(strings.TrimSpace(raw)) == 0 {
+		return
+	}
+	// field regexp
+	fieldRegexp := regexp.MustCompile(`^(?i)(warning)( )*:`)
+	if !fieldRegexp.MatchString(raw) {
+		return
+	}
+	field := regexp.MustCompile(`:`).ReplaceAllString(fieldRegexp.FindString(raw), "")
+	field = stringTrimPrefixAndTrimSuffix(field, " ")
+	w.field = field
+	w.source = raw
+	if len(strings.TrimSpace(raw)) == 0 {
+		return
+	}
+	raw = fieldRegexp.ReplaceAllString(raw, "")
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	// warn code regexp
+	warnCodeRegexp := regexp.MustCompile(`^\d+`)
+	// warn agent regexp
+	warnAgentRegexp := regexp.MustCompile(`^((\d+\.\d+\.\d+\.\d+)(:\d+)?)|(\w+\.\w+(\w+\.)?)`)
+
+	if warnCodeRegexp.MatchString(raw) {
+		codes := warnCodeRegexp.FindString(raw)
+		raw = strings.TrimPrefix(raw, codes)
+		raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+		code, _ := strconv.Atoi(codes)
+		if code > 0 {
+			w.warnCode = uint(code)
+		}
+	}
+	if warnAgentRegexp.MatchString(raw) {
+		w.warnAgent = warnAgentRegexp.FindString(raw)
+		raw = strings.TrimPrefix(raw, warnAgentRegexp.FindString(raw))
+		raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	}
+	raw = stringTrimPrefixAndTrimSuffix(raw, "\"")
+	raw = stringTrimPrefixAndTrimSuffix(raw, " ")
+	if len(strings.TrimSpace(raw)) > 0 {
+		w.warnText = raw
+	}
+
 }
